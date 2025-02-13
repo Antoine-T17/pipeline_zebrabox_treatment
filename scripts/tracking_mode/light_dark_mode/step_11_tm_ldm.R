@@ -1,13 +1,39 @@
+# -----------------------------------------------------------
+# generate_and_save_boxplots_delta_with_excel_files.R
+# -----------------------------------------------------------
+# This function generates and saves delta boxplots for your experimental data,
+# as well as writes pairwise percentage differences to an Excel file.
+# It performs the following tasks:
+#
+#   1. Prompts whether to generate delta boxplots.
+#   2. Validates the input data structure.
+#   3. Orders conditions based on generated_condition_grouped_order.
+#   4. Defines output directories for PNG, HTML, and Excel files.
+#   5. Manages colors by prompting for custom colors.
+#   6. Defines light and dark themes.
+#   7. Prompts for the desired output formats (HTML and PNG).
+#   8. Generates delta boxplots (if requested) for each response variable, zone, and theme.
+#   9. Calculates pairwise percentage differences and writes the results to an Excel file.
+#
+# All used inputs are recorded in the global list 'input_record_list'
+# (which should be initialized in your main script).
+# -----------------------------------------------------------
+
 generate_and_save_boxplots_delta_with_excel_files <- function(
     input_data = get("pretreated_delta_data_for_boxplots_df", envir = .GlobalEnv),
     output_dir = "outputs/tracking_mode/light_dark_mode/figures/boxplots",
     excel_output_dir = "outputs/tracking_mode/light_dark_mode/tables"
 ) {
-  message("\n---\nDEBUG: Starting Delta Boxplot Generation Process\n---\n")
+  message("\n---\n---\n---\n")
+  message("\n👋 Welcome to the Delta Boxplot Generation Process!\n")
+  message("This function helps you:")
+  message("  📊 Generate high-quality delta boxplots to visualize your experimental data.")
+  message("  🔧 Customize visualization by selecting colors and plot themes.")
+  message("  💾 Save plots in PNG and HTML formats.")
+  message("  💾 Save pairwise percentage differences as an Excel file.\n")
   
   # ---------------------------
   # Load pre-recorded inputs.
-  message("DEBUG: Loading pipeline inputs...")
   pipeline_inputs <- list()
   inputs_path <- "inputs/tracking_mode/light_dark_mode/inputs_values"
   inputs_file_xlsx <- file.path(inputs_path, "pipeline_inputs.xlsx")
@@ -25,25 +51,28 @@ generate_and_save_boxplots_delta_with_excel_files <- function(
     }
     pipeline_inputs <- setNames(as.list(df$input), df$parameters)
   }
-  message("DEBUG: pipeline_inputs loaded.")
   
   # ---------------------------
-  # Local helper: get_input_local
+  # Local helper: get input and record it.
   get_input_local <- function(param, prompt_msg, validate_fn = function(x) TRUE,
                               transform_fn = function(x) x,
                               error_msg = "Invalid input. Please try again.") {
     if (!is.null(pipeline_inputs[[param]]) && !is.na(pipeline_inputs[[param]]) &&
         pipeline_inputs[[param]] != "") {
       candidate <- transform_fn(as.character(pipeline_inputs[[param]]))
-      message("DEBUG: Using pre-recorded input for '", param, "': ", paste(candidate, collapse = ", "))
-      input_record_list[[param]] <<- paste(candidate, collapse = ", ")
-      return(candidate)
+      if (validate_fn(candidate)) {
+        message("Using pre-recorded input for '", param, "': ", candidate)
+        input_record_list[[param]] <<- candidate
+        return(candidate)
+      } else {
+        message("Pre-recorded input for '", param, "' is invalid. Falling back to interactive prompt.")
+      }
     }
     repeat {
       user_input <- readline(prompt = prompt_msg)
       candidate <- transform_fn(user_input)
       if (validate_fn(candidate)) {
-        input_record_list[[param]] <<- paste(candidate, collapse = ", ")
+        input_record_list[[param]] <<- candidate
         return(candidate)
       } else {
         message(error_msg)
@@ -51,6 +80,7 @@ generate_and_save_boxplots_delta_with_excel_files <- function(
     }
   }
   
+  # Helper to split comma-separated strings.
   split_and_trim <- function(x) {
     result <- unlist(strsplit(x, ","))
     trimws(result)
@@ -58,7 +88,6 @@ generate_and_save_boxplots_delta_with_excel_files <- function(
   
   # ---------------------------
   # Step 1: Ask whether to generate delta boxplots.
-  message("DEBUG: Prompting for generate_delta_boxplots...")
   generate_delta_boxplots <- get_input_local(
     "generate_delta_boxplots",
     prompt_msg = "❓ Do you want to generate delta boxplots? (yes/no): ",
@@ -67,15 +96,15 @@ generate_and_save_boxplots_delta_with_excel_files <- function(
     error_msg = "⚠️ Please enter 'yes' or 'no'."
   )
   generate_delta_boxplots <- generate_delta_boxplots %in% c("yes", "y")
-  if (!generate_delta_boxplots) {
-    message("DEBUG: Delta boxplot generation skipped by user input.")
+  if (generate_delta_boxplots) {
+    message("✔️ Proceeding with delta boxplot generation.")
   } else {
-    message("DEBUG: Proceeding with delta boxplot generation.")
+    message("❌ Delta boxplot generation skipped. The Excel file will still be generated.")
   }
   
   # ---------------------------
   # Step 2: Validate input data structure.
-  message("DEBUG: Validating input data structure...")
+  message("🔍 Checking data structure...")
   if (!"data.frame" %in% class(input_data)) {
     stop("Error: input_data must be a data frame!")
   }
@@ -88,20 +117,19 @@ generate_and_save_boxplots_delta_with_excel_files <- function(
   
   # ---------------------------
   # Step 3: Order conditions.
-  message("DEBUG: Ordering conditions using generated_condition_grouped_order...")
   if (exists("generated_condition_grouped_order", envir = .GlobalEnv)) {
+    message("✔️ Using 'generated_condition_grouped_order' to order condition groups.")
     boxplot_data$condition_grouped <- factor(
       boxplot_data$condition_grouped,
       levels = get("generated_condition_grouped_order", envir = .GlobalEnv)
     )
-    message("DEBUG: Conditions ordered.")
   } else {
     stop("❌ 'generated_condition_grouped_order' does not exist in the global environment. Please define it before running this function.")
   }
   
   # ---------------------------
   # Step 4: Define output directories.
-  message("DEBUG: Creating output directories...")
+  message("📁 Creating output directories...")
   html_path <- file.path(output_dir, "html")
   png_path <- file.path(output_dir, "png")
   jpg_path <- file.path(output_dir, "jpg")
@@ -111,11 +139,10 @@ generate_and_save_boxplots_delta_with_excel_files <- function(
   dir.create(png_path, recursive = TRUE, showWarnings = FALSE)
   dir.create(jpg_path, recursive = TRUE, showWarnings = FALSE)
   dir.create(excel_path, recursive = TRUE, showWarnings = FALSE)
-  message("DEBUG: Output directories created.")
+  message("✔️ Output directories created.")
   
   # ---------------------------
   # Step 5: Manage colors.
-  message("DEBUG: Prompting for custom switch_colors...")
   switch_colors <- get_input_local(
     "switch_colors",
     prompt_msg = "🎨 Enter custom colors for delta boxplots for 'before, switch, after' (comma-separated, e.g., #1f77b4, #2ca02c, #ff7f0e), or press Enter to use defaults: ",
@@ -128,21 +155,22 @@ generate_and_save_boxplots_delta_with_excel_files <- function(
   default_switch_colors <- c("before" = "#1f77b4", "switch" = "#2ca02c", "after" = "#ff7f0e")
   if (length(switch_colors) == 0) {
     colors <- default_switch_colors
-    message("DEBUG: No custom colors provided; using defaults.")
+    message("✔️ No custom colors provided; using default colors.")
   } else if (length(switch_colors) != 3) {
-    message("DEBUG: Number of custom colors (", length(switch_colors), 
+    message("⚠️ Number of custom colors (", length(switch_colors), 
             ") does not equal 3. Using default colors instead.")
     colors <- default_switch_colors
   } else {
     colors <- setNames(switch_colors, c("before", "switch", "after"))
-    message("DEBUG: Custom colors recorded.")
+    message("✔️ Custom colors recorded.")
   }
-  message(sprintf("DEBUG: Colors used - before: %s, switch: %s, after: %s", 
-                  colors["before"], colors["switch"], colors["after"]))
+  message("✔️ Colors used :")
+  message(sprintf("- before: %s", colors["before"]))
+  message(sprintf("- switch: %s", colors["switch"]))
+  message(sprintf("- after: %s", colors["after"]))
   
   # ---------------------------
   # Step 6: Define themes.
-  message("DEBUG: Defining light and dark themes...")
   light_theme <- function(base_size = 11, base_family = "") {
     theme_bw() %+replace%
       theme(
@@ -186,7 +214,7 @@ generate_and_save_boxplots_delta_with_excel_files <- function(
   
   # ---------------------------
   # Step 7: Get prompts for output formats.
-  message("DEBUG: Prompting for generate_delta_boxplots_html...")
+  message("❓ Please specify the output formats for delta boxplots:")
   generate_delta_boxplots_html <- get_input_local(
     "generate_delta_boxplots_html",
     prompt_msg = "❓ Do you want to generate interactive HTML delta boxplots? (yes/no): ",
@@ -194,9 +222,7 @@ generate_and_save_boxplots_delta_with_excel_files <- function(
     transform_fn = function(x) tolower(trimws(x)),
     error_msg = "⚠️ Please enter 'yes' or 'no'."
   )
-  message("DEBUG: generate_delta_boxplots_html: ", generate_delta_boxplots_html)
   
-  message("DEBUG: Prompting for generate_delta_boxplots_png...")
   generate_delta_boxplots_png <- get_input_local(
     "generate_delta_boxplots_png",
     prompt_msg = "❓ Do you want to generate static PNG delta boxplots? (yes/no): ",
@@ -204,29 +230,25 @@ generate_and_save_boxplots_delta_with_excel_files <- function(
     transform_fn = function(x) tolower(trimws(x)),
     error_msg = "⚠️ Please enter 'yes' or 'no'."
   )
-  message("DEBUG: generate_delta_boxplots_png: ", generate_delta_boxplots_png)
   
   # ---------------------------
   # Step 8: Generate delta boxplots if requested.
   if (generate_delta_boxplots) {
-    message("DEBUG: Starting delta boxplot generation loop...")
+    message("⏳ Generating delta boxplots... Please wait.")
+    message("☕ Plot generation may take some time. Enjoy a coffee while you wait.")
+    
     # Ensure the 'momentum' column is a factor in the desired order.
     boxplot_data$momentum <- factor(boxplot_data$momentum, levels = c("before", "switch", "after"))
     
     for (response_var in grep("^mean_", colnames(boxplot_data), value = TRUE)) {
-      message("DEBUG: Processing response variable: ", response_var)
       for (zone_number in unique(boxplot_data$zone)) {
-        message("DEBUG: Processing zone: ", zone_number)
         zone_data <- boxplot_data %>% filter(zone == zone_number)
         for (theme_name in c("light", "dark")) {
-          message("DEBUG: Processing theme: ", theme_name)
           current_theme <- if (theme_name == "light") light_theme() else dark_theme()
           line_color <- if (theme_name == "light") "black" else "white"
           jitter_color <- if (theme_name == "light") "black" else "white"
           
-          # Wrap plot creation in tryCatch to catch errors during ggplot call.
           plot <- tryCatch({
-            message("DEBUG: About to create ggplot object for ", response_var, ", zone ", zone_number, ", theme ", theme_name)
             p <- ggplot(zone_data, aes(
               x = condition_grouped,
               y = .data[[response_var]],
@@ -242,54 +264,47 @@ generate_and_save_boxplots_delta_with_excel_files <- function(
                 fill = "Momentum"
               ) +
               current_theme
-            message("DEBUG: Plot object created successfully.")
             p
           }, error = function(e) {
-            message("ERROR: Failed to create ggplot object for ", response_var, ", zone ", zone_number, ", theme ", theme_name, ". Error: ", e$message)
+            message("❌ Error: Failed to create plot for ", response_var, ", zone ", zone_number, ", theme ", theme_name, ". Error: ", e$message)
             return(NULL)
           })
           
-          # If plot creation failed, skip saving.
           if (is.null(plot)) next
           
           if (tolower(generate_delta_boxplots_png) %in% c("yes", "y")) {
             tryCatch({
-              message("DEBUG: About to save PNG for ", response_var, ", zone ", zone_number, ", theme ", theme_name)
               png_file <- file.path(png_path, sprintf("delta_boxplot_%s_zone_%s_%s.png", response_var, zone_number, theme_name))
               ggsave(filename = png_file, plot = plot, width = 12, height = 9, dpi = 300)
-              message("DEBUG: PNG saved: ", png_file)
+              message("✔️ PNG saved: ", png_file)
             }, error = function(e) {
-              message("ERROR: Failed to save PNG for ", response_var, ", zone ", zone_number, ", theme ", theme_name, ". Error: ", e$message)
+              message("❌ Error: Failed to save PNG for ", response_var, ", zone ", zone_number, ", theme ", theme_name, ". Error: ", e$message)
             })
           }
           
           if (tolower(generate_delta_boxplots_html) %in% c("yes", "y")) {
             tryCatch({
-              message("DEBUG: About to save HTML for ", response_var, ", zone ", zone_number, ", theme ", theme_name)
               html_file <- file.path(html_path, sprintf("delta_boxplot_%s_zone_%s_%s.html", response_var, zone_number, theme_name))
               interactive_plot <- ggplotly(plot)
               suppressMessages(saveWidget(interactive_plot, html_file, selfcontained = TRUE))
-              message("DEBUG: HTML saved: ", html_file)
+              message("✔️ HTML saved: ", html_file)
             }, error = function(e) {
-              message("ERROR: Failed to save HTML for ", response_var, ", zone ", zone_number, ", theme ", theme_name, ". Error: ", e$message)
+              message("❌ Error: Failed to save HTML for ", response_var, ", zone ", zone_number, ", theme ", theme_name, ". Error: ", e$message)
             })
           }
-        } # end theme loop
-      } # end zone loop
-    } # end response_var loop
-    message("DEBUG: Completed delta boxplot generation loop.")
+        }
+      }
+    }
+    message("🎉 Delta boxplots generation completed!")
   } else {
-    message("DEBUG: Delta boxplot generation skipped.")
+    message("❌ Delta boxplot generation skipped.")
   }
   
   # ---------------------------
   # Step 9: Generate pairwise percentage differences and write Excel file.
-  message("DEBUG: Starting pairwise percentage differences calculation...")
-  response_vars <- grep("^mean_", colnames(boxplot_data), value = TRUE)
   percentage_diff_results <- list()
-  
-  for (response_var in response_vars) {
-    message("DEBUG: Calculating percentage differences for ", response_var)
+  for (response_var in grep("^mean_", colnames(boxplot_data), value = TRUE)) {
+    message(sprintf("📊 Calculating percentage differences for %s (pairwise comparisons)...", response_var))
     results <- boxplot_data %>% 
       group_by(period_without_numbers, zone) %>% 
       nest() %>% 
@@ -325,10 +340,10 @@ generate_and_save_boxplots_delta_with_excel_files <- function(
       tidyr::unnest(comparison_results)
     
     percentage_diff_results[[response_var]] <- results
-    message("DEBUG: Completed percentage differences for ", response_var)
   }
   
-  message("DEBUG: Creating Excel workbook...")
+  message(sprintf("🎉 Pairwise percentage differences written to %s with conditional formatting!", 
+                  file.path(excel_output_dir, "delta_percentage_differences_pairwise.xlsx")))
   excel_file <- file.path(excel_output_dir, "delta_percentage_differences_pairwise.xlsx")
   wb <- createWorkbook()
   
@@ -372,10 +387,7 @@ generate_and_save_boxplots_delta_with_excel_files <- function(
   
   tryCatch({
     saveWorkbook(wb, excel_file, overwrite = TRUE)
-    message(sprintf("DEBUG: Excel workbook saved successfully: %s", excel_file))
   }, error = function(e) {
-    message("ERROR: Failed to save Excel workbook. Error: ", e$message)
+    message("❌ Error: Failed to save Excel workbook. Error: ", e$message)
   })
-  
-  message("DEBUG: Delta pairwise percentage differences process completed.")
 }
