@@ -1,97 +1,74 @@
 # -----------------------------------------------------------
-# import_and_process_data.R
+# File: import_and_process_data.R
 # -----------------------------------------------------------
-# This function enriches the raw experimental data with
-# additional information from the plate plan. It performs the following tasks:
-#
-#   1. Validates the plate plan to ensure that the required columns 
-#      ("animal" and "condition") are present.
-#   2. Matches each experimental well (from the 'animal' column) to 
-#      its assigned condition from the plate plan.
-#   3. Dynamically generates 'condition_grouped' (if missing) by 
-#      splitting the 'condition' string.
-#   4. Dynamically generates 'condition_tagged' (if missing) by grouping 
-#      by 'condition_grouped' and appending a row number.
-#   5. Appends 'condition_grouped' and 'condition_tagged' to the experimental data.
-#   6. Saves the enriched data globally as 'enriched_data_df'.
-#
-# Usage:
-#   enriched_data <- import_and_process_data(data, plate_plan)
-#
+# Harmonized version of the import_and_process_data function.
+# This function enriches experimental data using a plate plan by matching wells,
+# and if needed, generating additional grouping/tagging columns.
+# The enriched data is saved globally as 'enriched_data_df'.
 # -----------------------------------------------------------
 
 import_and_process_data <- function(data, plate_plan) {
-  # Suppress warnings and package startup messages for clarity.
   suppressWarnings(suppressPackageStartupMessages({
     library(dplyr)
     library(stringr)
   }))
   
-  message("\n---\n---\n---\n")
+  message("\n---\n")
   message("👋 Welcome to the Data Enrichment Process!\n")
-  message("This function assists you with:")
-  message("  • Matching experimental wells (from the 'animal' column) to their assigned conditions.")
-  message("  • Generating 'condition_grouped' and 'condition_tagged' if missing in the plate plan.\n")
+  message("📋 This function will help you:")
+  message("   • Match experimental wells (from the 'animal' column) with their conditions.")
+  message("   • Generate 'condition_grouped' and 'condition_tagged' columns if missing.")
+  message("   • Save the enriched data globally as 'enriched_data_df'.\n")
   
-  # Step 1: Validate the plate plan.
-  message("🔍 Validating the provided plate plan...")
+  # Validate plate plan.
+  message("🔍 Validating the plate plan...")
   required_columns <- c("animal", "condition")
   missing_cols <- setdiff(required_columns, colnames(plate_plan))
   if (length(missing_cols) > 0) {
-    stop("❌ The following required columns are missing in the plate plan: ",
-         paste(missing_cols, collapse = ", "))
+    stop("❌ Plate plan missing required columns: ", paste(missing_cols, collapse = ", "))
   }
-  message("✔️ Plate plan validation successful.\n")
+  message("✔️ Plate plan validation successful.")
   
-  # Step 2: Enrich the experimental data with plate plan information.
-  message("📂 Enriching experimental data with plate plan conditions...")
+  # Enrich experimental data.
+  message("🛠️ Matching experimental wells with plate plan conditions...")
   data$condition <- sapply(data$animal, function(animal_id) {
     value <- plate_plan$condition[plate_plan$animal == animal_id]
-    if (length(value) == 0) return(NA) else return(value)
+    if (length(value) == 0) NA else value
   })
-  message("✔️ Conditions successfully matched to experimental data.\n")
+  message("✔️ Conditions successfully matched.")
   
-  # Step 3: Dynamically generate 'condition_grouped' if missing.
+  # Generate condition_grouped if missing.
   if (!"condition_grouped" %in% colnames(plate_plan)) {
-    message("🔧 Generating 'condition_grouped' dynamically from 'condition'...")
+    message("🛠️ Generating 'condition_grouped' from 'condition'...")
     plate_plan$condition_grouped <- sapply(plate_plan$condition, function(cond) {
-      if (is.na(cond)) return(NA)
-      # Split the condition string by "_" and take the first part.
-      str_split(cond, "_")[[1]][1]
+      if (is.na(cond)) NA else strsplit(cond, "_")[[1]][1]
     })
-    message("✔️ 'condition_grouped' generated successfully.\n")
+    message("✔️ 'condition_grouped' generated.")
   }
   
-  # Step 4: Dynamically generate 'condition_tagged' if missing.
+  # Generate condition_tagged if missing.
   if (!"condition_tagged" %in% colnames(plate_plan)) {
-    message("🔧 Generating 'condition_tagged' dynamically based on 'condition_grouped'...")
+    message("🛠️ Generating 'condition_tagged' based on 'condition_grouped'...")
     plate_plan <- plate_plan %>%
       group_by(condition_grouped) %>%
-      mutate(condition_tagged = ifelse(
-        condition == "X", 
-        "X",
-        paste0(condition_grouped, "_", row_number())
-      )) %>%
+      mutate(condition_tagged = ifelse(condition == "X", "X", paste0(condition_grouped, "_", row_number()))) %>%
       ungroup()
-    message("✔️ 'condition_tagged' generated successfully.\n")
+    message("✔️ 'condition_tagged' generated.")
   }
   
-  # Step 5: Append 'condition_grouped' and 'condition_tagged' to the experimental data.
-  message("🔄 Adding 'condition_grouped' and 'condition_tagged' to the experimental data...")
+  # Append the new columns to data.
+  message("🛠️ Appending 'condition_grouped' and 'condition_tagged' to experimental data...")
   data$condition_grouped <- sapply(data$animal, function(animal_id) {
     value <- plate_plan$condition_grouped[plate_plan$animal == animal_id]
-    if (length(value) == 0) return(NA) else return(value)
+    if (length(value) == 0) NA else value
   })
-  
   data$condition_tagged <- sapply(data$animal, function(animal_id) {
     value <- plate_plan$condition_tagged[plate_plan$animal == animal_id]
-    if (length(value) == 0) return(NA) else return(value)
+    if (length(value) == 0) NA else value
   })
   
-  # Step 6: Save the enriched data globally.
-  message("\n🎉 Data enrichment completed successfully!")
-  message("💾 The enriched data has been saved globally as 'enriched_data_df'.\n")
+  message("🎉 Data enrichment completed!")
+  message("💾 Enriched data saved globally as 'enriched_data_df'.\n")
   assign("enriched_data_df", data, envir = .GlobalEnv)
-  
   return(data)
 }
