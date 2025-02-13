@@ -2,4 +2,6 @@
 source("scripts/final_step_run_full_pipeline.R")
 
 # Now run the pipeline
-results_final <- run_full_pipeline()
+results_final <- run_full_pipeline()    
+
+test = 100
