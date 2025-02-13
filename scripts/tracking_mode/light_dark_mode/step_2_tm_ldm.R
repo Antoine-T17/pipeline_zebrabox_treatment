@@ -14,17 +14,17 @@
 # -----------------------------------------------------------
 
 extract_data <- function() {
-  message("\n---\n---\n---\n")  
-  message("\n👋 Welcome to the Data Extraction Process!\n")
-  message("This function assists you with:")
-  message("  📂 Locating and reading your raw data file.")
-  message("  🔢 Converting potential numeric columns for proper processing.")
-  message("  💾 Saving the extracted data in the global environment for future steps.\n")
   
-  message("💡 Please ensure the following before proceeding:")
-  message("  - 📁 Your raw data file is saved in the 'inputs/tracking_mode/light_dark_mode/raw_data' directory.")
-  message("  - 🗂️ The file can be in either '.csv' or '.xlsx' format.")
-  message("  - 🛑 All Excel files are closed to avoid errors during processing.\n")
+  message("\n---\n---\n---\n")
+  message("👋 Welcome to the Data Extraction Process!\n")
+  message("This function assists you with:")
+  message("  • Locating and reading your raw data file.")
+  message("  • Converting potential numeric columns for proper processing.")
+  message("  • Saving the extracted data in the global environment for future steps.\n")
+  message("Please ensure the following before proceeding:")
+  message("  • Your raw data file is saved in the 'inputs/tracking_mode/light_dark_mode/raw_data' directory.")
+  message("  • The file can be in either '.csv' or '.xlsx' format.")
+  message("  • All Excel files are closed to avoid errors during processing.\n")
   
   # Load pre-recorded inputs for data extraction.
   pipeline_inputs <- list()

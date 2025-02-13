@@ -109,10 +109,10 @@ prompt_guidelines <- function(pipeline_inputs) {
   message("\n---\n---\n---\n")
   message("👋 Welcome to the Zebrabox Experiment Pipeline!\n")
   message("This pipeline guides you through the following steps:")
-  message("  🔢 Generate a fully randomized plate layout for your Zebrabox experiments.")
-  message("  📂 Extract raw data obtained from the Zebrabox.")
-  message("  🔄 Format and preprocess the extracted data for visualization.")
-  message("  📊 Create figures and tables to visualize your experimental results.\n")
+  message("  • Generate a fully randomized plate layout for your Zebrabox experiments.")
+  message("  • Extract raw data obtained from the Zebrabox.")
+  message("  • Format and preprocess the extracted data for visualization.")
+  message("  • Create figures and tables to visualize your experimental results.\n")
   
   primary_mode_map <- list(
     tm = "tracking_mode",

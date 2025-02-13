@@ -29,15 +29,13 @@ prepare_delta_data_for_analysis <- function(
     excel_output_dir = "outputs/tracking_mode/light_dark_mode/tables"
 ) {
   message("\n---\n---\n---\n")
-  message("\n👋 Welcome to the Delta Data Preparation Process!\n")
+  message("👋 Welcome to the Delta Data Preparation Process!\n")
   message("This function helps you:")
-  message("  📊 Prepare data for delta analysis, focusing on ranges around period boundaries (n).")
-  message("  🔍 The 'delta' represents the range of data to extract around a given period boundary (n):")
-  message("       - Rows corresponding to (n - delta) are labeled as 'before'.")
-  message("       - Rows corresponding to (n) are labeled as 'switch'.")
-  message("       - Rows corresponding to (n + delta) are labeled as 'after'.")
-  message("  🛠️ Define the period boundaries (n) and the delta (x) to extract data from the dataset.")
-  message("  💾 Save the filtered data for downstream delta-based analysis.\n")
+  message("  • Prepare data for delta analysis, focusing on ranges around period boundaries.")
+  message("  • Label rows corresponding to (n - delta) as 'before', (n) as 'switch', and (n + delta) as 'after'.")
+  message("  • Define the period boundaries (n) and the delta to extract data from the dataset.")
+  message("  • Save the filtered data for downstream delta-based analysis.\n")
+  
   
   # -------------------------------------------------------------------
   # Check that 'boundary_associations' exists in the global environment.

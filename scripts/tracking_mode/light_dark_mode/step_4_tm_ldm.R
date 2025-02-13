@@ -22,11 +22,11 @@ assign_periods_with_custom_durations <- function(enriched_data) {
   message("\n---\n---\n---\n")
   message("👋 Welcome to the Custom Period Assignment Process!\n")
   message("This function helps you:")
-  message("  🔗 Use your enriched data to assign experimental periods")
-  message("  🕒 Define a sequence of periods and their durations (starting with 'acclimatation')")
-  message("  🛠️ Assign these periods to your experimental data")
-  message("  🔍 Associate period boundaries with transitions")
-  message("  💾 Save the updated data and associations globally\n")
+  message("  • Use your enriched data to assign experimental periods.")
+  message("  • Define a sequence of periods and their durations (starting with 'acclimatation').")
+  message("  • Assign these periods to your experimental data.")
+  message("  • Associate period boundaries with transitions.")
+  message("  • Save the updated data and associations globally.\n")
   
   # Load pre-recorded inputs for period assignment.
   pipeline_inputs <- list()

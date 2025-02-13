@@ -22,10 +22,11 @@ process_zones <- function(enriched_data) {
   message("\n---\n---\n---\n")
   message("👋 Welcome to the Zone Processing Function!\n")
   message("This function helps you:")
-  message("  🔄 Load enriched data with periods.")
-  message("  📊 Filter data by user-specified zones.")
-  message("  🧮 Optionally calculate Zone 1 by subtracting Zone 2 from Zone 0.")
-  message("  💾 Save processed data for each zone as separate datasets.\n")
+  message("  • Load enriched data with periods.")
+  message("  • Filter data by user-specified zones.")
+  message("  • Optionally calculate Zone 1 by subtracting Zone 2 from Zone 0.")
+  message("  • Save processed data for each zone as separate datasets.\n")
+  
   
   message("🔍 Configuring Zones:")
   message("  - Zone 0: The outermost zone.")

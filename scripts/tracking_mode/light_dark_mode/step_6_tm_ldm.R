@@ -23,13 +23,14 @@ calculate_and_clean_zone_data <- function(zone_data_list) {
   message("\n---\n---\n---\n")
   message("👋 Welcome to the Zone Calculation and Cleaning Process!\n")
   message("This function helps you:")
-  message("  🔄 Load zone-specific data.")
-  message("  📊 Calculate new variables for each zone.")
-  message("  ⏱️ Convert the 'start' column based on user-defined units.")
-  message("  🗑️ Remove rows corresponding to the last minute.")
-  message("  🛠️ Add a `zone` column and reorder columns.")
-  message("  📊 Combine all zones into a single dataframe.")
-  message("  💾 Save cleaned and processed data in the global environment.\n")
+  message("  • Load zone-specific data.")
+  message("  • Calculate new variables for each zone.")
+  message("  • Convert the 'start' column based on user-defined units.")
+  message("  • Remove rows corresponding to the last minute.")
+  message("  • Add a `zone` column and reorder columns.")
+  message("  • Combine all zones into a single dataframe.")
+  message("  • Save cleaned and processed data in the global environment.\n")
+  
   
   # Load pre-recorded inputs for zone cleaning.
   pipeline_inputs <- list()

@@ -30,8 +30,8 @@ import_and_process_data <- function(data, plate_plan) {
   message("\n---\n---\n---\n")
   message("👋 Welcome to the Data Enrichment Process!\n")
   message("This function assists you with:")
-  message("  🔗 Matching experimental wells (from the 'animal' column) to their assigned conditions.")
-  message("  🛠️ Generating 'condition_grouped' and 'condition_tagged' if missing in the plate plan.\n")
+  message("  • Matching experimental wells (from the 'animal' column) to their assigned conditions.")
+  message("  • Generating 'condition_grouped' and 'condition_tagged' if missing in the plate plan.\n")
   
   # Step 1: Validate the plate plan.
   message("🔍 Validating the provided plate plan...")

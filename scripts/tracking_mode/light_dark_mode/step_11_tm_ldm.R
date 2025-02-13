@@ -25,12 +25,13 @@ generate_and_save_boxplots_delta_with_excel_files <- function(
     excel_output_dir = "outputs/tracking_mode/light_dark_mode/tables"
 ) {
   message("\n---\n---\n---\n")
-  message("\n👋 Welcome to the Delta Boxplot Generation Process!\n")
+  message("👋 Welcome to the Delta Boxplot Generation Process!\n")
   message("This function helps you:")
-  message("  📊 Generate high-quality delta boxplots to visualize your experimental data.")
-  message("  🔧 Customize visualization by selecting colors and plot themes.")
-  message("  💾 Save plots in PNG and HTML formats.")
-  message("  💾 Save pairwise percentage differences as an Excel file.\n")
+  message("  • Generate high-quality delta boxplots to visualize your experimental data.")
+  message("  • Customize visualization by selecting colors and plot themes.")
+  message("  • Save plots in PNG and HTML formats.")
+  message("  • Save pairwise percentage differences as an Excel file.\n")
+  
   
   # ---------------------------
   # Load pre-recorded inputs.

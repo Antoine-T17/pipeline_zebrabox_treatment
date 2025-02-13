@@ -3,11 +3,11 @@ generate_and_save_boxplots_with_excel_files <- function(input_data = get("pretre
                                                         excel_output_dir = "outputs/tracking_mode/light_dark_mode/tables") {
   tryCatch({
     message("\n---\n---\n---\n")
-    message("👋 Welcome to the Boxplot Generation Process!")
+    message("👋 Welcome to the Boxplot Generation Process!\n")
     message("This function helps you:")
-    message("  📊 Generate high-quality boxplots to visualize your experimental data.")
-    message("  🔧 Customize visualization by selecting periods, colors, and plot themes.")
-    message("  💾 Save plots in PNG and HTML formats, and calculate pairwise comparisons.\n")
+    message("  • Generate high-quality boxplots to visualize your experimental data.")
+    message("  • Customize visualization by selecting periods, colors, and plot themes.")
+    message("  • Save plots in PNG and HTML formats, and calculate pairwise comparisons.\n")
     
     # ---------------------------
     # Load pre-recorded inputs.

@@ -28,14 +28,13 @@ pre_visualization_data_treatment <- function(zone_combined_data) {
   message("\n---\n---\n---\n")
   message("👋 Welcome to the Data Pretreatment Process for Visualization!\n")
   message("This function helps you:")
-  message("  📋 Define the order of conditions and condition_grouped for figures.")
-  message("  🕵️ Remove suspect wells specified by the user.")
-  message("  📊 Calculate the number of wells per condition and zone.")
-  message("  🔄 Calculate normalized sums for conditions and zones.")
-  message("    💡 Define an integration period to aggregate data over consistent time intervals.")
-  message("  🌞/🌑 Define light and dark periods for filtering.")
-  message("  📊 Calculate mean values for boxplots.")
-  message("  💾 Save the outputs as datasets for line plots and box plots.\n")
+  message("  • Define the order of conditions and condition_grouped for figures.")
+  message("  • Remove suspect wells specified by the user.")
+  message("  • Calculate the number of wells per condition and zone.")
+  message("  • Calculate normalized sums for conditions and zones using an integration period to aggregate data over consistent time intervals.")
+  message("  • Define light and dark periods for filtering.")
+  message("  • Calculate mean values for boxplots.")
+  message("  • Save the outputs as datasets for line plots and box plots.\n")
   
   # ---------------------------
   # Load pre-recorded inputs.

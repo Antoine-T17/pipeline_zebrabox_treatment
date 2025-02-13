@@ -21,12 +21,12 @@ generate_plate_plan <- function(plan_dir = "inputs/tracking_mode/light_dark_mode
   }
   
   message("\n---\n---\n---\n")
-  message("👋 Welcome to the Multi-Well Plate Plan Generator!")
+  message("👋 Welcome to the Multi-Well Plate Plan Generator!\n")
   message("This function assists you with:")
-  message("  - Creating a new plate plan or loading an existing one.")
-  message("  - Randomizing well assignments if a new plan is created.")
-  message("  - Supporting both '.csv' and '.xlsx' file formats.")
-  message("  - Saving the plate plan for later use.\n")
+  message("  📋 Creating a new plate plan or loading an existing one.")
+  message("  🔀 Randomizing well assignments if a new plan is created.")
+  message("  📂 Supporting both '.csv' and '.xlsx' file formats.")
+  message("  💾 Saving the plate plan for later use.\n")
   
   # Load pre-recorded inputs for the plate plan.
   pipeline_inputs <- list()

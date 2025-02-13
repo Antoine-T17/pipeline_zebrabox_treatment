@@ -2,11 +2,11 @@ generate_and_save_lineplots <- function(input_data = get("pretreated_data_for_li
                                         output_dir = "outputs/tracking_mode/light_dark_mode/figures/lineplots") {
   tryCatch({
     message("\n---\n---\n---\n")
-    message("👋 Welcome to the Lineplot Generation Process!")
+    message("👋 Welcome to the Lineplot Generation Process!\n")
     message("This function helps you:")
-    message("  📊 Generate high-quality line plots for your experimental data.")
-    message("  🔧 Customize visualization by selecting periods, colors, and plot themes.")
-    message("  💾 Save plots in PNG and HTML formats.\n")
+    message("  • Generate high-quality line plots for your experimental data.")
+    message("  • Customize visualization by selecting periods, colors, and plot themes.")
+    message("  • Save plots in PNG and HTML formats.\n")
     
     # ---------------------------
     # Load pre-recorded inputs (if available)
