@@ -106,9 +106,9 @@ prompt_clear_outputs <- function(output_base_dir, pipeline_inputs) {
 
 # Function to display pipeline guidelines and prompt for modes.
 prompt_guidelines <- function(pipeline_inputs) {
-  message("\n---\n---\n---\n")
+  message("\n---\n")
   message("👋 Welcome to the Zebrabox Experiment Pipeline!\n")
-  message("This pipeline guides you through the following steps:")
+  message("📋 This pipeline guides you through the following steps:")
   message("  • Generate a fully randomized plate layout for your Zebrabox experiments.")
   message("  • Extract raw data obtained from the Zebrabox.")
   message("  • Format and preprocess the extracted data for visualization.")
@@ -163,7 +163,7 @@ prompt_guidelines <- function(pipeline_inputs) {
   
   message("\n📦 All necessary packages are installed and loaded. You are ready to proceed!")
   message("🎯 You're all set! The pipeline will run in ", primary_mode, " > ", secondary_mode, ".")
-  message("\n---\n---\n---\n")
+  message("\n---\n")
   
   return(list(primary_mode = primary_mode, secondary_mode = secondary_mode))
 }
