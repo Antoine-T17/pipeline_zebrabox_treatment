@@ -1,7 +1,7 @@
 # -----------------------------------------------------------
 # File: generate_and_save_boxplots_delta_with_excel_files.R
 # -----------------------------------------------------------
-# Harmonized version of the generate_and_save_boxplots_delta_with_excel_files function.
+# Harmonized version of the generate_and_save_boxplots_delta_with_excel_files function for light dark mode.
 # This function generates delta boxplots from pretreated delta data,
 # validates data structure, orders conditions, manages colors and themes,
 # prompts for output formats, and writes pairwise percentage differences to an Excel file.
@@ -20,7 +20,7 @@ generate_and_save_boxplots_delta_with_excel_files <- function(input_data = get("
   
   # Load pre-recorded inputs.
   pipeline_inputs <- list()
-  inputs_path <- "inputs/tracking_mode/light_dark_mode/inputs_values"
+  inputs_path <- "inputs/inputs_values"
   inputs_file_xlsx <- file.path(inputs_path, "pipeline_inputs.xlsx")
   inputs_file_csv  <- file.path(inputs_path, "pipeline_inputs.csv")
   if (file.exists(inputs_file_xlsx)) {

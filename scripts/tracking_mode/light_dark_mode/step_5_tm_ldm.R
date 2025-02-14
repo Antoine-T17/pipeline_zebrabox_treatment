@@ -1,7 +1,7 @@
 # -----------------------------------------------------------
 # File: process_zones.R
 # -----------------------------------------------------------
-# Harmonized version of the process_zones function.
+# Harmonized version of the process_zones function for light dark mode.
 # This function processes experimental zones from enriched data.
 # It displays zone definitions, optionally shows a visual schema,
 # prompts for zone numbers, filters the data per zone, optionally calculates Zone 1,
@@ -25,7 +25,7 @@ process_zones <- function(enriched_data) {
   
   # Load pre-recorded inputs.
   pipeline_inputs <- list()
-  inputs_path <- "inputs/tracking_mode/light_dark_mode/inputs_values"
+  inputs_path <- "inputs/inputs_values"
   inputs_file_xlsx <- file.path(inputs_path, "pipeline_inputs.xlsx")
   inputs_file_csv  <- file.path(inputs_path, "pipeline_inputs.csv")
   if (file.exists(inputs_file_xlsx)) {

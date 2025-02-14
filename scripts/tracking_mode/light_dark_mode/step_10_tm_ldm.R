@@ -1,7 +1,7 @@
 # -----------------------------------------------------------
 # File: prepare_delta_data_for_analysis.R
 # -----------------------------------------------------------
-# Harmonized version of the prepare_delta_data_for_analysis function.
+# Harmonized version of the prepare_delta_data_for_analysis function for light dark mode.
 # This function prepares data for delta analysis by:
 #   • Displaying available period boundaries.
 #   • Prompting for selected boundaries and a delta value.
@@ -31,7 +31,7 @@ prepare_delta_data_for_analysis <- function(zone_calculated_list = get("zone_cal
   
   # Load pre-recorded inputs.
   pipeline_inputs <- list()
-  inputs_path <- "inputs/tracking_mode/light_dark_mode/inputs_values"
+  inputs_path <- "inputs/inputs_values"
   inputs_file_xlsx <- file.path(inputs_path, "pipeline_inputs.xlsx")
   inputs_file_csv  <- file.path(inputs_path, "pipeline_inputs.csv")
   if (file.exists(inputs_file_xlsx)) {

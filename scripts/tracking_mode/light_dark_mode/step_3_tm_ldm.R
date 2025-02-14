@@ -1,7 +1,7 @@
 # -----------------------------------------------------------
 # File: import_and_process_data.R
 # -----------------------------------------------------------
-# Harmonized version of the import_and_process_data function.
+# Harmonized version of the import_and_process_data function for light dark mode.
 # This function enriches experimental data using a plate plan by matching wells,
 # and if needed, generating additional grouping/tagging columns.
 # The enriched data is saved globally as 'enriched_data_df'.

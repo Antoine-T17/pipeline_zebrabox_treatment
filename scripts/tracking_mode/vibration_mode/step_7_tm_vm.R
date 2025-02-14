@@ -1,156 +1,158 @@
+# -----------------------------------------------------------
+# File: pre_visualization_data_treatment.R
+# Harmonized version of the pre_visualization_data_treatment function for vibration_mode.
+# This function prepares combined zone data for visualization.
+# It prompts for condition ordering, removal of conditions and suspect wells,
+# calculates well counts, normalizes sums, filters vibration/rest periods,
+# and saves outputs for line and box plots globally.
+# -----------------------------------------------------------
+
 pre_visualization_data_treatment <- function(zone_combined_data) {
+  message("\n---\n")
+  message("👋 Welcome to the Data Pretreatment Process for Visualization!\n")
+  message("📋 This function will help you:")
+  message("   • Define condition orders and remove unwanted data.")
+  message("   • Calculate well counts and normalized sums.")
+  message("   • Filter data for vibration and rest periods and prepare datasets for line plots and box plots.")
+  message("   • Save outputs globally as 'pretreated_data_for_lineplots_df' and 'pretreated_data_for_boxplots_df'.\n")
   
-  message("\n---\n---\n---\n")
+  # Load pre-recorded inputs.
+  pipeline_inputs <- list()
+  inputs_path <- "inputs/inputs_values"
+  inputs_file_xlsx <- file.path(inputs_path, "pipeline_inputs.xlsx")
+  inputs_file_csv  <- file.path(inputs_path, "pipeline_inputs.csv")
+  if (file.exists(inputs_file_xlsx)) {
+    df <- readxl::read_excel(inputs_file_xlsx, sheet = 1)
+    if (!all(c("parameters", "input") %in% colnames(df))) {
+      stop("❌ The pipeline_inputs.xlsx file must contain columns 'parameters' and 'input'.")
+    }
+    pipeline_inputs <- setNames(as.list(df$input), df$parameters)
+  } else if (file.exists(inputs_file_csv)) {
+    df <- read.csv2(inputs_file_csv, sep = ";", dec = ".", header = TRUE, stringsAsFactors = FALSE)
+    if (!all(c("parameters", "input") %in% colnames(df))) {
+      stop("❌ The pipeline_inputs.csv file must contain columns 'parameters' and 'input'.")
+    }
+    pipeline_inputs <- setNames(as.list(df$input), df$parameters)
+  }
   
-  # Welcome message
-  message("\n👋 Welcome to the Data Pretreatment Process for Visualization!\n")
-  message("This function helps you:\n")
-  message("📋 Define the order of conditions and grouped conditions for figures.")
-  message("🕵️ Remove suspect wells specified by the user.")
-  message("📊 Calculate the number of wells per condition and zone.")
-  message("🔄 Calculate normalized sums for conditions and zones.")
-  message("  💡 Define an integration period to aggregate data over consistent time intervals.")
-  message("🔊/💤 Define vibration and rest periods for filtering.")
-  message("📊 Calculate mean values for boxplots.")
-  message("💾 Save the outputs as datasets for line plots and box plots.\n")
+  split_and_trim <- function(x) trimws(unlist(strsplit(x, ",")))
   
-  # Step 1: Define condition orders
-  message("📋 Defining the order of conditions and condition_grouped...")
-  get_valid_order <- function(prompt_message, available_items) {
+  # Unified helper.
+  get_input_local <- function(param, prompt_msg, validate_fn = function(x) TRUE,
+                              transform_fn = function(x) x,
+                              error_msg = "❌ Invalid input. Please try again.") {
+    if (!is.null(pipeline_inputs[[param]]) && pipeline_inputs[[param]] != "") {
+      candidate <- transform_fn(as.character(pipeline_inputs[[param]]))
+      if (length(candidate) == 1 && candidate == "") candidate <- character(0)
+      message("💾 Using pre-recorded input for '", param, "': ", paste(candidate, collapse = ", "))
+      if (validate_fn(candidate)) {
+        input_record_list[[param]] <<- paste(candidate, collapse = ", ")
+        return(candidate)
+      } else {
+        message("⚠️ Pre-recorded input for '", param, "' is invalid. Switching to interactive prompt.")
+      }
+    }
     repeat {
-      message("Available options: ", paste(available_items, collapse = ", "))
-      user_input <- readline(prompt = prompt_message)
-      selected_order <- unlist(strsplit(trimws(user_input), ","))
-      selected_order <- trimws(selected_order)
-      
-      # Identify any missing items or invalid entries
-      missing_items <- setdiff(available_items, selected_order)
-      invalid_items <- setdiff(selected_order, available_items)
-      
-      if (length(invalid_items) > 0) {
-        message("❌ Invalid entries: ", paste(invalid_items, collapse = ", "))
-      }
-      if (length(missing_items) > 0) {
-        message("❌ Missing items: ", paste(missing_items, collapse = ", "))
-        message("💡 Please include all available options in your input.")
-      }
-      if (length(missing_items) == 0 && length(invalid_items) == 0) {
-        message("✔️ Selected order: ", paste(selected_order, collapse = ", "))
-        return(selected_order)
+      user_input <- readline(prompt = prompt_msg)
+      candidate <- transform_fn(user_input)
+      if (length(candidate) == 1 && candidate == "") candidate <- character(0)
+      if (validate_fn(candidate)) {
+        message("✔️ Input for '", param, "' recorded: ", paste(candidate, collapse = ", "))
+        input_record_list[[param]] <<- paste(candidate, collapse = ", ")
+        return(candidate)
+      } else {
+        message(error_msg)
       }
     }
   }
   
-  # Prompt for condition order
-  message("📋 Defining conditions...")
+  # Step 1: Define condition orders.
+  message("📋 Defining condition orders...")
   available_conditions <- unique(zone_combined_data$condition)
-  condition_order <- get_valid_order(
-    "Enter the desired order of conditions (e.g., control_1, control_2, control_3, contaminated_1, contaminated_2, contaminated_3,...): ",
-    available_conditions
-  )
-  
-  # Prompt for condition_grouped order
-  message("📋 Defining condition_grouped...")
   available_condition_grouped <- unique(zone_combined_data$condition_grouped)
-  condition_grouped_order <- get_valid_order(
-    "Enter the desired order of condition_grouped (e.g., control, contaminated,...): ",
-    available_condition_grouped
-  )
   
-  # Save the orders in the global environment
+  condition_order <- get_input_local("conditions_order",
+                                     "❓ Enter the desired order of conditions (comma-separated): ",
+                                     validate_fn = function(x) {
+                                       orders <- split_and_trim(x)
+                                       missing_items <- setdiff(available_conditions, orders)
+                                       invalid_items <- setdiff(orders, available_conditions)
+                                       (length(missing_items) == 0) && (length(invalid_items) == 0)
+                                     },
+                                     transform_fn = split_and_trim)
+  message("✔️ Condition order set: ", paste(condition_order, collapse = ", "))
+  
+  condition_grouped_order <- get_input_local("conditions_grouped_order",
+                                             "❓ Enter the desired order of condition_grouped (comma-separated): ",
+                                             validate_fn = function(x) {
+                                               orders <- split_and_trim(x)
+                                               missing_items <- setdiff(available_condition_grouped, orders)
+                                               invalid_items <- setdiff(orders, available_condition_grouped)
+                                               (length(missing_items) == 0) && (length(invalid_items) == 0)
+                                             },
+                                             transform_fn = split_and_trim)
+  message("✔️ Condition_grouped order set: ", paste(condition_grouped_order, collapse = ", "))
+  
   assign("generated_condition_order", condition_order, envir = .GlobalEnv)
   assign("generated_condition_grouped_order", condition_grouped_order, envir = .GlobalEnv)
-  message("✔️ Condition orders saved as 'generated_condition_order' and 'generated_condition_grouped_order'.")
+  message("💾 Condition orders saved globally.")
   
-  # Step 2: Remove conditions (e.g., blank defined by "X") if the user desires
-  message("🧹 Removing conditions specified by the user...")
-  repeat {
-    remove_conditions <- readline(prompt = "Enter the condition(s) to remove (e.g., X), separated by commas, or press Enter to skip: ")
-    remove_conditions <- unlist(strsplit(trimws(remove_conditions), ","))
-    remove_conditions <- trimws(remove_conditions)
-    
-    if (length(remove_conditions) == 0 || all(remove_conditions == "")) {
-      message("✔️ No conditions removed.")
-      break
-    }
-    
-    # Check that each entered condition exists in the 'condition' column
+  # Step 2: Remove conditions.
+  message("🧹 Removing specified conditions (if any)...")
+  remove_conditions <- get_input_local("remove_conditions",
+                                       "❓ Enter condition(s) to remove (comma-separated), or press Enter to skip: ",
+                                       validate_fn = function(x) TRUE,
+                                       transform_fn = split_and_trim)
+  if (length(remove_conditions) == 0) {
+    message("✔️ No conditions removed.")
+  } else {
     invalid_conditions <- remove_conditions[!remove_conditions %in% unique(zone_combined_data$condition)]
     if (length(invalid_conditions) > 0) {
       message("❌ The following conditions do not exist: ", paste(invalid_conditions, collapse = ", "))
-      message("💡 Please enter valid condition names from: ", paste(unique(zone_combined_data$condition), collapse = ", "))
+      message("⚠️ No conditions were removed.")
     } else {
-      message("✔️ Conditions to remove: ", paste(remove_conditions, collapse = ", "))
+      message("✔️ Removing conditions: ", paste(remove_conditions, collapse = ", "))
       zone_combined_data <- zone_combined_data %>% filter(!condition %in% remove_conditions)
-      message("✔️ Specified conditions successfully removed.")
-      break
     }
   }
   
-  # Step 3: Remove suspect wells
-  message("🕵️ Removing suspect wells specified by the user...")
-  repeat {
-    suspect_wells <- readline(prompt = "Enter the suspect wells to remove (e.g., A03, D06), separated by commas, or press Enter to skip: ")
-    suspect_wells <- unlist(strsplit(trimws(suspect_wells), ","))
-    suspect_wells <- trimws(suspect_wells)
-    
-    if (length(suspect_wells) == 0 || all(suspect_wells == "")) {
-      message("✔️ No suspect wells specified.")
-      break
-    }
-    
-    # Check if all wells exist in the 'animal' column
-    invalid_wells <- suspect_wells[!suspect_wells %in% zone_combined_data$animal]
+  # Step 3: Remove suspect wells.
+  message("🕵️ Removing suspect wells (if specified)...")
+  remove_suspect_well <- get_input_local("remove_suspect_well",
+                                         "❓ Enter suspect wells to remove (comma-separated), or press Enter to skip: ",
+                                         validate_fn = function(x) TRUE,
+                                         transform_fn = split_and_trim)
+  if (length(remove_suspect_well) == 0) {
+    message("✔️ No suspect wells specified.")
+  } else {
+    invalid_wells <- remove_suspect_well[!remove_suspect_well %in% zone_combined_data$animal]
     if (length(invalid_wells) > 0) {
-      message("❌ The following wells do not exist in the 'animal' column: ", paste(invalid_wells, collapse = ", "))
-      message("💡 Please re-enter the suspect wells.")
+      message("❌ The following wells do not exist: ", paste(invalid_wells, collapse = ", "))
+      message("⚠️ Skipping removal of suspect wells.")
     } else {
-      message("✔️ Wells to remove: ", paste(suspect_wells, collapse = ", "))
-      zone_combined_data <- zone_combined_data %>% filter(!animal %in% suspect_wells)
-      message("✔️ Suspect wells successfully removed.")
-      break
+      message("✔️ Removing suspect wells: ", paste(remove_suspect_well, collapse = ", "))
+      zone_combined_data <- zone_combined_data %>% filter(!animal %in% remove_suspect_well)
     }
   }
   
-  # Step 4: Calculate the number of wells per condition and zone
-  message("📊 Calculating the number of wells per condition and zone...")
+  # Step 4: Calculate the number of wells per condition and zone.
+  message("📊 Calculating well counts per condition and zone...")
   specific_minute <- 1
-  wells_per_condition <- zone_combined_data %>%
-    filter(!is.na(start) & start == specific_minute) %>%
-    group_by(zone, condition) %>%
-    summarise(n_wells = n_distinct(animal), .groups = "drop")
-  
-  zone_combined_data <- zone_combined_data %>%
-    left_join(wells_per_condition, by = c("zone", "condition"))
+  wells_per_condition <- zone_combined_data %>% filter(!is.na(start) & start == specific_minute) %>%
+    group_by(zone, condition) %>% summarise(n_wells = n_distinct(animal), .groups = "drop")
+  zone_combined_data <- zone_combined_data %>% left_join(wells_per_condition, by = c("zone", "condition"))
   message("✔️ Well counts appended.")
   
-  # Step 5: Calculate normalized sums
-  message("🔄 Calculating normalized sums based on aggregation periods...")
-  message("ℹ️ Aggregation Period Explanation: ")
-  message("The aggregation period is the time interval (in seconds) used to group data points for normalization.")
-  message("💡 For example, if you select 60 seconds, all data points within each minute will be grouped together.")
-  message("💡 This is useful for aggregating data over consistent time intervals for better comparison across conditions.\n")
-  
-  # Prompt for aggregation period
-  repeat {
-    aggregation_period <- as.numeric(readline(prompt = "Enter the aggregation period in seconds (e.g., 60): "))
-    if (!is.na(aggregation_period) && aggregation_period > 0) {
-      message("✔️ Aggregation period set to ", aggregation_period, " seconds.")
-      break
-    } else {
-      message("❌ Invalid input. Enter a positive numeric value.")
-    }
-  }
-  
-  # Convert aggregation period to minutes for calculations
+  # Step 5: Calculate normalized sums.
+  message("🛠️ Calculating normalized sums using aggregation period...")
+  aggregation_period <- as.numeric(get_input_local("aggregation_period",
+                                                   "❓ Enter aggregation period in seconds (e.g., 60): ",
+                                                   validate_fn = function(x) !is.na(as.numeric(x)) && as.numeric(x) > 0,
+                                                   transform_fn = function(x) as.numeric(trimws(x))))
+  message("✔️ Aggregation period set to ", aggregation_period, " seconds.")
   aggregation_period_minutes <- aggregation_period / 60
-  
-  # Apply the aggregation period to round and group data
-  zone_combined_data <- zone_combined_data %>%
-    mutate(start_rounded = floor(start / aggregation_period_minutes) * aggregation_period_minutes)
-  
-  normalized_sums <- zone_combined_data %>%
-    group_by(condition, period_with_numbers, zone, start_rounded) %>%
+  zone_combined_data <- zone_combined_data %>% mutate(start_rounded = floor(start / aggregation_period_minutes) * aggregation_period_minutes)
+  normalized_sums <- zone_combined_data %>% group_by(condition, period_with_numbers, zone, start_rounded) %>%
     summarise(
       animal               = first(animal),
       condition            = first(condition),
@@ -162,107 +164,91 @@ pre_visualization_data_treatment <- function(zone_combined_data) {
       zone                 = first(zone),
       n_wells              = first(n_wells),
       sum_totaldist        = sum(totaldist, na.rm = TRUE) / n_wells,
-      sum_smldist          = sum(smldist,   na.rm = TRUE) / n_wells,
-      sum_lardist          = sum(lardist,   na.rm = TRUE) / n_wells,
-      sum_totaldur         = sum(totaldur,  na.rm = TRUE) / n_wells,
-      sum_smldur           = sum(smldur,    na.rm = TRUE) / n_wells,
-      sum_lardur           = sum(lardur,    na.rm = TRUE) / n_wells,
-      sum_totalct          = sum(totalct,   na.rm = TRUE) / n_wells,
-      sum_smlct            = sum(smlct,     na.rm = TRUE) / n_wells,
-      sum_larct            = sum(larct,     na.rm = TRUE) / n_wells,
-      sum_inact            = sum(inact,     na.rm = TRUE) / n_wells,
-      sum_inadur           = sum(inadur,    na.rm = TRUE) / n_wells,
-      sum_inadist          = sum(inadist,   na.rm = TRUE) / n_wells,
-      sum_emptyct          = sum(emptyct,   na.rm = TRUE) / n_wells,
-      sum_emptydur         = sum(emptydur,  na.rm = TRUE) / n_wells,
+      sum_smldist          = sum(smldist, na.rm = TRUE) / n_wells,
+      sum_lardist          = sum(lardist, na.rm = TRUE) / n_wells,
+      sum_totaldur         = sum(totaldur, na.rm = TRUE) / n_wells,
+      sum_smldur           = sum(smldur, na.rm = TRUE) / n_wells,
+      sum_lardur           = sum(lardur, na.rm = TRUE) / n_wells,
+      sum_totalct          = sum(totalct, na.rm = TRUE) / n_wells,
+      sum_smlct            = sum(smlct, na.rm = TRUE) / n_wells,
+      sum_larct            = sum(larct, na.rm = TRUE) / n_wells,
+      sum_inact            = sum(inact, na.rm = TRUE) / n_wells,
+      sum_inadur           = sum(inadur, na.rm = TRUE) / n_wells,
+      sum_inadist          = sum(inadist, na.rm = TRUE) / n_wells,
+      sum_emptyct          = sum(emptyct, na.rm = TRUE) / n_wells,
+      sum_emptydur         = sum(emptydur, na.rm = TRUE) / n_wells,
       .groups = "drop"
     )
   
-  # Step 6: Define vibration/rest periods
+  # Step 6: Define vibration and rest periods.
   message("🔊/💤 Define vibration and rest periods...")
-  
-  # Display available periods
   available_periods <- unique(zone_combined_data$period_with_numbers)
-  message("Available periods: ", paste(available_periods, collapse = ", "))
+  message("ℹ️ Available periods: ", paste(available_periods, collapse = ", "))
+  # Prompt for vibration periods.
+  vibration_period <- get_input_local("vibration_period",
+                                      "❓ Enter vibration periods to include (comma-separated): ",
+                                      validate_fn = function(x) {
+                                        periods <- split_and_trim(x)
+                                        length(periods) > 0 && all(periods %in% available_periods)
+                                      },
+                                      transform_fn = split_and_trim,
+                                      error_msg = "❌ Invalid vibration periods. Please use available options.")
+  message("✔️ Selected vibration periods: ", paste(vibration_period, collapse = ", "))
   
-  # Function to validate user input for periods
-  get_valid_periods <- function(prompt_message, period_type) {
-    repeat {
-      user_input <- readline(prompt = prompt_message)
-      selected_periods <- unlist(strsplit(trimws(user_input), ","))
-      selected_periods <- trimws(selected_periods) # Remove extra spaces
-      invalid_periods <- setdiff(selected_periods, available_periods)
-      
-      if (length(selected_periods) == 0 || any(selected_periods == "")) {
-        message("❌ You must select at least one ", period_type, " period.")
-      } else if (length(invalid_periods) > 0) {
-        message("❌ Invalid periods: ", paste(invalid_periods, collapse = ", "))
-        message("💡 Please enter valid periods from the available options: ", 
-                paste(available_periods, collapse = ", "))
-      } else {
-        message("✔️ Selected ", period_type, " periods: ", paste(selected_periods, collapse = ", "))
-        return(selected_periods)
-      }
-    }
-  }
+  # Prompt for rest periods.
+  rest_period <- get_input_local("rest_period",
+                                 "❓ Enter rest periods to include (comma-separated): ",
+                                 validate_fn = function(x) {
+                                   periods <- split_and_trim(x)
+                                   length(periods) > 0 && all(periods %in% available_periods)
+                                 },
+                                 transform_fn = split_and_trim,
+                                 error_msg = "❌ Invalid rest periods. Please use available options.")
+  message("✔️ Selected rest periods: ", paste(rest_period, collapse = ", "))
   
-  # Ask user to select vibration periods
-  message("🔊 Define vibration periods...")
-  vibration_periods <- get_valid_periods("Enter vibration periods to include (e.g., vibration_1, vibration_2): ", "vibration")
+  vibration_data <- zone_combined_data %>% filter(period_with_numbers %in% vibration_period)
+  rest_data  <- zone_combined_data %>% filter(period_with_numbers %in% rest_period)
   
-  # Ask user to select rest periods
-  message("💤 Define rest periods...")
-  rest_periods <- get_valid_periods("Enter rest periods to include (e.g., rest_1, rest_2): ", "rest")
-  
-  # Filter the data for vibration and rest periods
-  vibration_data <- zone_combined_data %>% filter(period_with_numbers %in% vibration_periods)
-  rest_data <- zone_combined_data %>% filter(period_with_numbers %in% rest_periods)
-  
-  # Step 7: Calculate mean values for boxplots
-  message("📊 Calculating mean values for vibration and rest periods...")
-  vibration_data <- zone_combined_data %>% filter(period_with_numbers %in% vibration_periods)
-  rest_data <- zone_combined_data %>% filter(period_with_numbers %in% rest_periods)
-  
+  # Step 7: Calculate mean values for boxplots.
+  message("📊 Calculating mean values for boxplot data...")
   calculate_means <- function(data) {
-    data %>%
-      group_by(condition_tagged, period_without_numbers, zone) %>%
+    data %>% group_by(condition_tagged, period_without_numbers, zone) %>%
       summarise(
-        start_rounded           = first(start_rounded),
-        condition_grouped       = first(condition_grouped),
-        animal                  = first(animal),
-        condition               = first(condition),
-        period                  = first(period),
-        period_with_numbers     = first(period_with_numbers),
-        period_without_numbers  = first(period_without_numbers),
-        n_wells                 = n_distinct(animal),
-        mean_totaldist          = mean(totaldist, na.rm = TRUE),
-        mean_smldist            = mean(smldist, na.rm = TRUE),
-        mean_lardist            = mean(lardist, na.rm = TRUE),
-        mean_totaldur           = mean(totaldur, na.rm = TRUE),
-        mean_smldur             = mean(smldur, na.rm = TRUE),
-        mean_lardur             = mean(lardur, na.rm = TRUE),
-        mean_totalct            = mean(totalct, na.rm = TRUE),
-        mean_smlct              = mean(smlct, na.rm = TRUE),
-        mean_larct              = mean(larct, na.rm = TRUE),
-        mean_inact              = mean(inact, na.rm = TRUE),
-        mean_inadur             = mean(inadur, na.rm = TRUE),
-        mean_inadist            = mean(inadist, na.rm = TRUE),
-        mean_emptyct            = mean(emptyct, na.rm = TRUE),
-        mean_emptydur           = mean(emptydur, na.rm = TRUE),
+        start_rounded = first(start_rounded),
+        condition_grouped = first(condition_grouped),
+        animal = first(animal),
+        condition = first(condition),
+        period = first(period),
+        period_with_numbers = first(period_with_numbers),
+        period_without_numbers = first(period_without_numbers),
+        n_wells = first(n_wells),
+        mean_totaldist = mean(totaldist, na.rm = TRUE),
+        mean_smldist = mean(smldist, na.rm = TRUE),
+        mean_lardist = mean(lardist, na.rm = TRUE),
+        mean_totaldur = mean(totaldur, na.rm = TRUE),
+        mean_smldur = mean(smldur, na.rm = TRUE),
+        mean_lardur = mean(lardur, na.rm = TRUE),
+        mean_totalct = mean(totalct, na.rm = TRUE),
+        mean_smlct = mean(smlct, na.rm = TRUE),
+        mean_larct = mean(larct, na.rm = TRUE),
+        mean_inact = mean(inact, na.rm = TRUE),
+        mean_inadur = mean(inadur, na.rm = TRUE),
+        mean_inadist = mean(inadist, na.rm = TRUE),
+        mean_emptyct = mean(emptyct, na.rm = TRUE),
+        mean_emptydur = mean(emptydur, na.rm = TRUE),
         .groups = "drop"
       )
   }
   
   vibration_boxplot_data <- calculate_means(vibration_data)
-  rest_boxplot_data <- calculate_means(rest_data)
+  rest_boxplot_data  <- calculate_means(rest_data)
   boxplot_data <- dplyr::bind_rows(vibration_boxplot_data, rest_boxplot_data)
   
-  # Save results in the global environment
   assign("pretreated_data_for_lineplots_df", normalized_sums, envir = .GlobalEnv)
   assign("pretreated_data_for_boxplots_df", boxplot_data, envir = .GlobalEnv)
-  message("🎉 Pretreatment complete! Saved as:\n")
-  message("  - Line plots: 'pretreated_data_for_lineplots_df'")
-  message("  - Box plots: 'pretreated_data_for_boxplots_df'\n")
+  message("🎉 Pretreatment complete!")
+  message("💾 Line plot data: 'pretreated_data_for_lineplots_df'")
+  message("💾 Box plot data: 'pretreated_data_for_boxplots_df'\n")
   
   return(list(lineplots = normalized_sums, boxplots = boxplot_data))
 }

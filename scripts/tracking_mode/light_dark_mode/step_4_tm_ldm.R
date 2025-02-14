@@ -1,7 +1,7 @@
 # -----------------------------------------------------------
 # File: assign_periods_with_custom_durations.R
 # -----------------------------------------------------------
-# Harmonized version of assign_periods_with_custom_durations.
+# Harmonized version of assign_periods_with_custom_durations for light dark mode.
 # This function assigns experimental periods based on user-defined boundaries.
 # It prompts for the period sequence and boundaries, assigns periods accordingly,
 # creates an additional column stripping numeric tags, and saves the results globally.
@@ -18,7 +18,7 @@ assign_periods_with_custom_durations <- function(enriched_data) {
   
   # Load pre-recorded inputs.
   pipeline_inputs <- list()
-  inputs_path <- "inputs/tracking_mode/light_dark_mode/inputs_values"
+  inputs_path <- "inputs/inputs_values"
   inputs_file_xlsx <- file.path(inputs_path, "pipeline_inputs.xlsx")
   inputs_file_csv  <- file.path(inputs_path, "pipeline_inputs.csv")
   

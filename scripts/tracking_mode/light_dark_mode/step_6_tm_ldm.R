@@ -1,7 +1,7 @@
 # -----------------------------------------------------------
 # File: calculate_and_clean_zone_data.R
 # -----------------------------------------------------------
-# Harmonized version of the calculate_and_clean_zone_data function.
+# Harmonized version of the calculate_and_clean_zone_data function for light_dark mode.
 # This function processes each zone’s data by computing new variables,
 # converting the 'start' column to minutes (using a user-specified unit),
 # filtering out the last minute, reordering columns, and combining all zones.
@@ -19,7 +19,7 @@ calculate_and_clean_zone_data <- function(zone_data_list) {
   
   # Load pre-recorded inputs.
   pipeline_inputs <- list()
-  inputs_path <- "inputs/tracking_mode/light_dark_mode/inputs_values"
+  inputs_path <- "inputs/inputs_values"
   inputs_file_xlsx <- file.path(inputs_path, "pipeline_inputs.xlsx")
   inputs_file_csv  <- file.path(inputs_path, "pipeline_inputs.csv")
   if (file.exists(inputs_file_xlsx)) {

@@ -1,7 +1,7 @@
 # -----------------------------------------------------------
 # File: pre_visualization_data_treatment.R
 # -----------------------------------------------------------
-# Harmonized version of the pre_visualization_data_treatment function.
+# Harmonized version of the pre_visualization_data_treatment function for light dark mode.
 # This function prepares combined zone data for visualization.
 # It prompts for condition ordering, removal of conditions and suspect wells,
 # calculates well counts, normalizes sums, filters light/dark periods,
@@ -19,7 +19,7 @@ pre_visualization_data_treatment <- function(zone_combined_data) {
   
   # Load pre-recorded inputs.
   pipeline_inputs <- list()
-  inputs_path <- "inputs/tracking_mode/light_dark_mode/inputs_values"
+  inputs_path <- "inputs/inputs_values"
   inputs_file_xlsx <- file.path(inputs_path, "pipeline_inputs.xlsx")
   inputs_file_csv  <- file.path(inputs_path, "pipeline_inputs.csv")
   if (file.exists(inputs_file_xlsx)) {

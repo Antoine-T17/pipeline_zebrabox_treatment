@@ -1,7 +1,7 @@
 # -----------------------------------------------------------
 # File: generate_and_save_lineplots.R
 # -----------------------------------------------------------
-# Harmonized version of the generate_and_save_lineplots function.
+# Harmonized version of the generate_and_save_lineplots function for light dark mode.
 # This function generates line plots from the pretreated line plot data,
 # validates the data structure, manages colors and themes, and saves plots
 # in PNG and/or interactive HTML formats to specified directories.
@@ -19,7 +19,7 @@ generate_and_save_lineplots <- function(input_data = get("pretreated_data_for_li
     
     # Load pre-recorded inputs.
     pipeline_inputs <- list()
-    inputs_path <- "inputs/tracking_mode/light_dark_mode/inputs_values"
+    inputs_path <- "inputs/inputs_values"
     inputs_file_xlsx <- file.path(inputs_path, "pipeline_inputs.xlsx")
     inputs_file_csv  <- file.path(inputs_path, "pipeline_inputs.csv")
     if (file.exists(inputs_file_xlsx)) {

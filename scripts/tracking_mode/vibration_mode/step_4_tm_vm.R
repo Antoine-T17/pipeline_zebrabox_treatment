@@ -1,110 +1,126 @@
-assign_periods_with_custom_durations <- function(enriched_data) {
+# -----------------------------------------------------------
+# File: assign_periods_with_custom_durations.R
+# -----------------------------------------------------------
+# Harmonized version of assign_periods_with_custom_durations for vibration_mode.
+# This function assigns experimental periods based on user-defined boundaries.
+# It prompts for the period sequence and boundaries, assigns periods accordingly,
+# creates an additional column stripping numeric tags (converting vibration/rest periods),
+# and saves the results globally.
+# -----------------------------------------------------------
 
-  message("\n---\n---\n---\n")
+assign_periods_with_custom_durations <- function(enriched_data) {
+  message("\n---\n")
+  message("👋 Welcome to the Custom Period Assignment Process!\n")
+  message("📋 This function will help you:")
+  message("   • Define your experimental period sequence and boundaries.")
+  message("   • Assign each data row a period based on its 'start' time.")
+  message("   • Create a simplified period column (without numeric tags).")
+  message("   • Save the updated data and associations globally.\n")
   
-  # Welcome message
-  message("\n👋 Welcome to the Custom Period Assignment Process!\n")
-  message("This function helps you:\n")
-  message("🔗 Use your enriched data file to assign periods based on your experimental protocol.")
-  message("🕒 Define a sequence of periods and their boundaries.")
-  message("🛠️ Assign these periods to your experimental data.")
-  message("🔍 Associate period boundaries with transitions between periods.")
-  message("💾 Save the enriched data with newly assigned period columns.\n")
+  # Load pre-recorded inputs.
+  pipeline_inputs <- list()
+  inputs_path <- "inputs/inputs_values"
+  inputs_file_xlsx <- file.path(inputs_path, "pipeline_inputs.xlsx")
+  inputs_file_csv  <- file.path(inputs_path, "pipeline_inputs.csv")
   
-  # Step 1: Prompt user for period names
-  message("📋 Let's define your experimental sequence.")
-  repeat {
-    periods_input <- readline(prompt = "Enter the sequence of periods, starting with an acclimatation phase, separated by commas (e.g., acclimatation, vibration_1, rest_1, vibration_2, rest_2,...): ")
-    periods <- trimws(unlist(strsplit(periods_input, ",")))
-    
-    # Check if "acclimatation" is present in the input
-    if (length(periods) == 0) {
-      message("⚠️ The sequence of periods cannot be empty. Please try again.")
-    } else if (!"acclimatation" %in% periods) {
-      message("❌ The sequence must include 'acclimatation' as the first period. Please try again.")
-    } else {
-      message("✔️ Sequence of periods successfully recorded: ", paste(periods, collapse = ", "))
-      break
+  if (file.exists(inputs_file_xlsx)) {
+    df <- readxl::read_excel(inputs_file_xlsx, sheet = 1)
+    if (!all(c("parameters", "input") %in% colnames(df))) {
+      stop("❌ The pipeline_inputs.xlsx file must contain columns 'parameters' and 'input'.")
     }
-  }
-  
-  # Step 2: Prompt user for all period boundaries at once
-  message("🔧 Now, let's define the period boundaries manually.")
-  message("ℹ️ Period boundaries represent the exact time codes (in seconds) where a switch occurs between two consecutive periods.")
-  
-  # Show the full sequence of periods
-  message("📋 Your full sequence of periods is: ", paste(periods, collapse = ", "))
-  message("💡 Enter all boundaries in one line, separated by commas (e.g., '1800, 1802, 1920, 1922, 2040, 2042').")
-  
-  repeat {
-    boundaries_input <- readline(prompt = "Enter the time codes (in seconds) for all switches: ")
-    period_boundaries <- as.numeric(trimws(unlist(strsplit(boundaries_input, ","))))
-    if (length(period_boundaries) == length(periods) - 1 && all(!is.na(period_boundaries) & period_boundaries > 0)) {
-      message("✔️ Period boundaries successfully recorded: ", paste(period_boundaries, collapse = ", "))
-      break
-    } else {
-      message("⚠️ Invalid input. Please ensure all time codes are positive numbers separated by commas and match the number of switches (", length(periods) - 1, ").")
+    pipeline_inputs <- setNames(as.list(df$input), df$parameters)
+  } else if (file.exists(inputs_file_csv)) {
+    df <- read.csv2(inputs_file_csv, sep = ";", dec = ".", header = TRUE, stringsAsFactors = FALSE)
+    if (!all(c("parameters", "input") %in% colnames(df))) {
+      stop("❌ The pipeline_inputs.csv file must contain columns 'parameters' and 'input'.")
     }
+    pipeline_inputs <- setNames(as.list(df$input), df$parameters)
   }
   
-  # Convert boundaries to minutes
-  period_boundaries <- period_boundaries / 60
-  
-  # Create associations between boundaries and transitions
-  period_transitions <- paste(periods[-length(periods)], periods[-1], sep = "-")  # Generate transitions
-  boundary_associations <- data.frame(
-    boundary_time = period_boundaries,
-    transition = period_transitions
-  )
-  
-  # Step 3: Assign periods based on boundaries
-  message("🛠️ Assigning periods to data based on boundaries...")
-  
-  # Ensure 'start' column exists
-  if (!"start" %in% colnames(enriched_data)) {
-    stop("❌ Error: The 'start' column is missing in the dataset.")
-  }
-  
-  assign_period <- function(start_time_sec) {
-    for (i in seq_along(period_boundaries)) {
-      if (start_time_sec < period_boundaries[i] * 60) {  # Convert boundary back to seconds for comparison
-        return(periods[i])
+  # Unified helper to retrieve inputs.
+  get_input_local <- function(param, prompt_msg, validate_fn = function(x) TRUE,
+                              transform_fn = function(x) x,
+                              error_msg = "❌ Invalid input. Please try again.") {
+    if (!is.null(pipeline_inputs[[param]]) && pipeline_inputs[[param]] != "") {
+      candidate <- transform_fn(pipeline_inputs[[param]])
+      if (validate_fn(candidate)) {
+        message("💾 Using pre-recorded input for '", param, "': ", candidate)
+        input_record_list[[param]] <<- candidate
+        return(candidate)
+      } else {
+        message("⚠️ Pre-recorded input for '", param, "' is invalid. Switching to interactive prompt.")
       }
     }
-    return(periods[length(periods)])  # Assign the last period if time exceeds the last boundary
+    repeat {
+      user_input <- readline(prompt = prompt_msg)
+      candidate <- transform_fn(user_input)
+      if (validate_fn(candidate)) {
+        message("✔️ Input for '", param, "' recorded: ", candidate)
+        input_record_list[[param]] <<- candidate
+        return(candidate)
+      } else {
+        message(error_msg)
+      }
+    }
   }
   
-  enriched_data <- enriched_data %>%
-    mutate(period_with_numbers = sapply(start, assign_period))
+  # Step 1: Define the sequence of periods.
+  message("📋 Define your experimental period sequence (starting with 'acclimatation').")
+  period_sequence_input <- get_input_local("period_sequence",
+                                           "❓ Enter the sequence of periods (comma-separated, e.g., acclimatation, vibration_1, rest_1,...): ",
+                                           validate_fn = function(x) {
+                                             periods <- trimws(unlist(strsplit(as.character(x), ",")))
+                                             length(periods) > 0 && ("acclimatation" %in% periods)
+                                           },
+                                           transform_fn = function(x) trimws(as.character(x)))
+  periods <- trimws(unlist(strsplit(period_sequence_input, ",")))
+  message("✔️ Period sequence recorded: ", paste(periods, collapse = ", "))
   
-  # Debugging assignment
-  message("🔍 Debugging Period Assignment...")
-  message("🔍 User-defined periods: ", paste(periods, collapse = ", "))
-  message("🔍 Assigned periods in the dataset: ", paste(unique(enriched_data$period_with_numbers), collapse = ", "))
+  # Step 2: Define period boundaries.
+  message("🛠️ Define period boundaries (time codes in seconds) for each transition.")
+  boundaries_input <- get_input_local("period_boundaries",
+                                      sprintf("❓ Enter %d time codes (comma-separated): ", length(periods) - 1),
+                                      validate_fn = function(x) {
+                                        boundaries <- as.numeric(trimws(unlist(strsplit(as.character(x), ","))))
+                                        length(boundaries) == length(periods) - 1 && all(!is.na(boundaries)) && all(boundaries > 0)
+                                      },
+                                      transform_fn = function(x) as.numeric(trimws(unlist(strsplit(as.character(x), ",")))),
+                                      error_msg = sprintf("❌ Please enter %d positive numeric time codes separated by commas.", length(periods) - 1))
+  period_boundaries <- boundaries_input / 60  # Convert seconds to minutes
+  message("✔️ Period boundaries recorded (in minutes): ", paste(period_boundaries, collapse = ", "))
   
-  message("✔️ Periods successfully assigned to the data.")
+  # Create associations.
+  period_transitions <- paste(periods[-length(periods)], periods[-1], sep = "-")
+  boundary_associations <- data.frame(boundary_time = period_boundaries, transition = period_transitions)
   
-  # Step 4: Create 'period_without_numbers' column
-  message("🛠️ Creating the 'period_without_numbers' column...")
-  enriched_data <- enriched_data %>%
-    mutate(
-      period_without_numbers = case_when(
-        str_detect(period_with_numbers, "^vibration") ~ "vibration",
-        str_detect(period_with_numbers, "^rest") ~ "rest",
-        TRUE ~ period_with_numbers
-      )
+  # Assign periods based on boundaries.
+  message("🛠️ Assigning periods based on 'start' time...")
+  assign_period <- function(start_time_sec) {
+    for (i in seq_along(period_boundaries)) {
+      if (start_time_sec < period_boundaries[i] * 60) return(periods[i])
+    }
+    return(periods[length(periods)])
+  }
+  enriched_data <- enriched_data %>% mutate(period_with_numbers = sapply(start, assign_period))
+  message("✔️ Periods assigned successfully.")
+  
+  # Create simplified period column.
+  message("🛠️ Creating 'period_without_numbers' column...")
+  enriched_data <- enriched_data %>% mutate(
+    period_without_numbers = case_when(
+      str_detect(period_with_numbers, "^vibration") ~ "vibration",
+      str_detect(period_with_numbers, "^rest") ~ "rest",
+      TRUE ~ period_with_numbers
     )
-  message("✔️ 'period_without_numbers' column successfully created.")
+  )
+  message("✔️ 'period_without_numbers' created.")
   
-  # Step 5: Save enriched data and associations to the global environment
+  # Save results globally.
   assign("boundary_associations", boundary_associations, envir = .GlobalEnv)
   assign("data_with_periods_df", enriched_data, envir = .GlobalEnv)
   assign("period_boundaries", period_boundaries, envir = .GlobalEnv)
-  message("🎉 Boundary associations created!")
-  message("🎉 Period assignment completed successfully!")
-  message("💾 The enriched data has been saved in the global environment as 'data_with_periods_df'.")
-  message("💾 The period_boundaries has been saved in the global environment as 'period_boundaries'.")
-  message("💾 The boundary-to-transition associations have been saved as 'boundary_associations'.\n")
+  message("🎉 Period assignment completed!")
+  message("💾 Results saved as 'data_with_periods_df', 'period_boundaries', and 'boundary_associations'.\n")
   
   return(enriched_data)
 }

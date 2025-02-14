@@ -1,7 +1,7 @@
 # -----------------------------------------------------------
 # File: extract_data.R
 # -----------------------------------------------------------
-# Harmonized version of the extract_data function.
+# Harmonized version of the extract_data function for light dark mode.
 # This function locates, reads, and processes raw experimental data (supporting CSV and Excel).
 # It also standardizes numeric column conversion and saves the data globally as 'extracted_data_df'.
 # -----------------------------------------------------------
@@ -21,7 +21,7 @@ extract_data <- function() {
   
   # Load pre-recorded inputs.
   pipeline_inputs <- list()
-  inputs_path <- "inputs/tracking_mode/light_dark_mode/inputs_values"
+  inputs_path <- "inputs/inputs_values"
   inputs_file_xlsx <- file.path(inputs_path, "pipeline_inputs.xlsx")
   inputs_file_csv  <- file.path(inputs_path, "pipeline_inputs.csv")
   

@@ -20,7 +20,7 @@ input_record_list <<- list()
 # Function to load pre-recorded inputs from the pipeline inputs file.
 load_pipeline_inputs <- function() {
   pipeline_inputs <- list()
-  inputs_path <- "inputs/tracking_mode/light_dark_mode/inputs_values"
+  inputs_path <- "inputs/inputs_values"
   inputs_file_xlsx <- file.path(inputs_path, "pipeline_inputs.xlsx")
   inputs_file_csv <- file.path(inputs_path, "pipeline_inputs.csv")
   

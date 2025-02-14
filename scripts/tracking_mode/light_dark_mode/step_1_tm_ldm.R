@@ -1,7 +1,7 @@
 # -----------------------------------------------------------
 # File: generate_plate_plan.R
 # -----------------------------------------------------------
-# Harmonized version of the generate_plate_plan function.
+# Harmonized version of the generate_plate_plan function for light dark mode.
 # This function assists in creating a new plate plan or loading an existing one.
 # It retrieves inputs (either pre-recorded or interactively) via a unified helper
 # and saves the resulting plate plan globally as 'plate_plan_df'.
@@ -25,7 +25,7 @@ generate_plate_plan <- function(plan_dir = "inputs/tracking_mode/light_dark_mode
   
   # Load pre-recorded inputs.
   pipeline_inputs <- list()
-  inputs_path <- "inputs/tracking_mode/light_dark_mode/inputs_values"
+  inputs_path <- "inputs/inputs_values"
   inputs_file_xlsx <- file.path(inputs_path, "pipeline_inputs.xlsx")
   inputs_file_csv  <- file.path(inputs_path, "pipeline_inputs.csv")
   

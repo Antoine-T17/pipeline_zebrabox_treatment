@@ -1,7 +1,7 @@
 # -----------------------------------------------------------
 # File: generate_and_save_boxplots_with_excel_files.R
 # -----------------------------------------------------------
-# Harmonized version of the generate_and_save_boxplots_with_excel_files function.
+# Harmonized version of the generate_and_save_boxplots_with_excel_files function for light dark mode.
 # This function generates boxplots from the pretreated boxplot data,
 # validates the data structure, manages colors and themes, saves plots in PNG/HTML,
 # and writes pairwise percentage differences to an Excel file with conditional formatting.
@@ -21,7 +21,7 @@ generate_and_save_boxplots_with_excel_files <- function(input_data = get("pretre
     
     # Load pre-recorded inputs.
     pipeline_inputs <- list()
-    inputs_path <- "inputs/tracking_mode/light_dark_mode/inputs_values"
+    inputs_path <- "inputs/inputs_values"
     inputs_file_xlsx <- file.path(inputs_path, "pipeline_inputs.xlsx")
     inputs_file_csv  <- file.path(inputs_path, "pipeline_inputs.csv")
     if (file.exists(inputs_file_xlsx)) {
