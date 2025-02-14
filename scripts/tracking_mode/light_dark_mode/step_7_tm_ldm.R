@@ -33,24 +33,8 @@ pre_visualization_data_treatment <- function(zone_combined_data) {
   message("   • Filter data for light and dark periods and prepare datasets for line plots and box plots.")
   message("   • Save outputs globally as 'pretreated_data_for_lineplots_df' and 'pretreated_data_for_boxplots_df'.\n")
   
-  # Load pre-recorded inputs.
-  pipeline_inputs <- list()
-  inputs_path <- "inputs/inputs_values"
-  inputs_file_xlsx <- file.path(inputs_path, "pipeline_inputs.xlsx")
-  inputs_file_csv  <- file.path(inputs_path, "pipeline_inputs.csv")
-  if (file.exists(inputs_file_xlsx)) {
-    df <- readxl::read_excel(inputs_file_xlsx, sheet = 1)
-    if (!all(c("parameters", "input") %in% colnames(df))) {
-      stop("❌ The pipeline_inputs.xlsx file must contain columns 'parameters' and 'input'.")
-    }
-    pipeline_inputs <- setNames(as.list(df$input), df$parameters)
-  } else if (file.exists(inputs_file_csv)) {
-    df <- read.csv2(inputs_file_csv, sep = ";", dec = ".", header = TRUE, stringsAsFactors = FALSE)
-    if (!all(c("parameters", "input") %in% colnames(df))) {
-      stop("❌ The pipeline_inputs.csv file must contain columns 'parameters' and 'input'.")
-    }
-    pipeline_inputs <- setNames(as.list(df$input), df$parameters)
-  }
+  # Retrieve pre-recorded inputs from the global pipeline_inputs.
+  pipeline_inputs <- get("pipeline_inputs", envir = .GlobalEnv)
   
   split_and_trim <- function(x) trimws(unlist(strsplit(x, ",")))
   

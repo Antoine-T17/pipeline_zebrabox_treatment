@@ -17,26 +17,8 @@ generate_and_save_lineplots <- function(input_data = get("pretreated_data_for_li
     message("   • Customize plot appearance using themes and colors.")
     message("   • Save plots in PNG and/or interactive HTML formats.\n")
     
-    # Load pre-recorded inputs.
-    pipeline_inputs <- list()
-    inputs_path <- "inputs/inputs_values"
-    inputs_file_xlsx <- file.path(inputs_path, "pipeline_inputs.xlsx")
-    inputs_file_csv  <- file.path(inputs_path, "pipeline_inputs.csv")
-    if (file.exists(inputs_file_xlsx)) {
-      df <- readxl::read_excel(inputs_file_xlsx, sheet = 1)
-      if (!all(c("parameters", "input") %in% colnames(df))) {
-        message("❌ pipeline_inputs.xlsx missing required columns. Skipping lineplot generation.")
-        return(invisible(NULL))
-      }
-      pipeline_inputs <- setNames(as.list(df$input), df$parameters)
-    } else if (file.exists(inputs_file_csv)) {
-      df <- read.csv2(inputs_file_csv, sep = ";", dec = ".", header = TRUE, stringsAsFactors = FALSE)
-      if (!all(c("parameters", "input") %in% colnames(df))) {
-        message("❌ pipeline_inputs.csv missing required columns. Skipping lineplot generation.")
-        return(invisible(NULL))
-      }
-      pipeline_inputs <- setNames(as.list(df$input), df$parameters)
-    }
+    # Retrieve pre-recorded inputs from the global pipeline_inputs.
+    pipeline_inputs <- get("pipeline_inputs", envir = .GlobalEnv)
     
     # Unified input helper.
     get_input_local <- function(param, prompt_msg, validate_fn = function(x) TRUE,

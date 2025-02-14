@@ -19,26 +19,8 @@ generate_and_save_boxplots_with_excel_files <- function(input_data = get("pretre
     message("   • Save plots in PNG and/or interactive HTML formats.")
     message("   • Write pairwise percentage differences to an Excel file.\n")
     
-    # Load pre-recorded inputs.
-    pipeline_inputs <- list()
-    inputs_path <- "inputs/inputs_values"
-    inputs_file_xlsx <- file.path(inputs_path, "pipeline_inputs.xlsx")
-    inputs_file_csv  <- file.path(inputs_path, "pipeline_inputs.csv")
-    if (file.exists(inputs_file_xlsx)) {
-      df <- readxl::read_excel(inputs_file_xlsx, sheet = 1)
-      if (!all(c("parameters", "input") %in% colnames(df))) {
-        message("❌ Missing required columns in pipeline_inputs.xlsx. Skipping boxplot generation.")
-        return(invisible(NULL))
-      }
-      pipeline_inputs <- setNames(as.list(df$input), df$parameters)
-    } else if (file.exists(inputs_file_csv)) {
-      df <- read.csv2(inputs_file_csv, sep = ";", dec = ".", header = TRUE, stringsAsFactors = FALSE)
-      if (!all(c("parameters", "input") %in% colnames(df))) {
-        message("❌ Missing required columns in pipeline_inputs.csv. Skipping boxplot generation.")
-        return(invisible(NULL))
-      }
-      pipeline_inputs <- setNames(as.list(df$input), df$parameters)
-    }
+    # Retrieve pre-recorded inputs from the global pipeline_inputs.
+    pipeline_inputs <- get("pipeline_inputs", envir = .GlobalEnv)
     
     # Unified input helper.
     get_input_local <- function(param, prompt_msg, default_value = NULL,
