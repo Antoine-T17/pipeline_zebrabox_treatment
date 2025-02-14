@@ -1,49 +1,31 @@
 # -----------------------------------------------------------
 # File: generate_and_save_lineplots.R
 # -----------------------------------------------------------
-# Harmonized version of the generate_and_save_lineplots function for vibration_mode.
-# This function generates line plots from the pretreated line plot data,
-# validates the data structure, manages colors and themes, and saves plots
-# in PNG and/or interactive HTML formats to specified directories.
+# Harmonized version of the generate_and_save_lineplots function
+# adapted for vibration mode.
+# This function generates vibration plots from your pretreated data,
+# validates the data structure, manages colors and themes, and saves
+# plots in PNG and/or interactive HTML formats to specified directories.
 # -----------------------------------------------------------
 
 generate_and_save_lineplots <- function(input_data = get("pretreated_data_for_lineplots_df", envir = .GlobalEnv),
                                         output_dir = "outputs/tracking_mode/vibration_mode/figures/lineplots") {
   tryCatch({
     message("\n---\n")
-    message("👋 Welcome to the Lineplot Generation Process!\n")
+    message("👋 Welcome to the Line Plot Generation Process!\n")
     message("📋 This function will help you:")
-    message("   • Generate high-quality line plots from your data.")
+    message("   • Generate high-quality vibration plots from your data.")
     message("   • Customize plot appearance using themes and colors.")
     message("   • Save plots in PNG and/or interactive HTML formats.\n")
     
-    # Load pre-recorded inputs.
-    pipeline_inputs <- list()
-    inputs_path <- "inputs/inputs_values"
-    inputs_file_xlsx <- file.path(inputs_path, "pipeline_inputs.xlsx")
-    inputs_file_csv  <- file.path(inputs_path, "pipeline_inputs.csv")
-    if (file.exists(inputs_file_xlsx)) {
-      df <- readxl::read_excel(inputs_file_xlsx, sheet = 1)
-      if (!all(c("parameters", "input") %in% colnames(df))) {
-        message("❌ pipeline_inputs.xlsx missing required columns. Skipping lineplot generation.")
-        return(invisible(NULL))
-      }
-      pipeline_inputs <- setNames(as.list(df$input), df$parameters)
-    } else if (file.exists(inputs_file_csv)) {
-      df <- read.csv2(inputs_file_csv, sep = ";", dec = ".", header = TRUE, stringsAsFactors = FALSE)
-      if (!all(c("parameters", "input") %in% colnames(df))) {
-        message("❌ pipeline_inputs.csv missing required columns. Skipping lineplot generation.")
-        return(invisible(NULL))
-      }
-      pipeline_inputs <- setNames(as.list(df$input), df$parameters)
-    }
+    # Retrieve pre-recorded inputs from the global pipeline_inputs.
+    pipeline_inputs <- get("pipeline_inputs", envir = .GlobalEnv)
     
     # Unified input helper.
     get_input_local <- function(param, prompt_msg, validate_fn = function(x) TRUE,
                                 transform_fn = function(x) x,
                                 error_msg = "❌ Invalid input. Please try again.") {
-      if (!is.null(pipeline_inputs[[param]]) && pipeline_inputs[[param]] != "" &&
-          !is.na(pipeline_inputs[[param]])) {
+      if (!is.null(pipeline_inputs[[param]]) && pipeline_inputs[[param]] != "" && !is.na(pipeline_inputs[[param]])) {
         candidate <- transform_fn(as.character(pipeline_inputs[[param]]))
         if (validate_fn(candidate)) {
           message("💾 Using pre-recorded input for '", param, "': ", candidate)
@@ -68,37 +50,37 @@ generate_and_save_lineplots <- function(input_data = get("pretreated_data_for_li
     
     split_and_trim <- function(x) trimws(unlist(strsplit(x, ",")))
     
-    # Step 0: Ask whether to generate line plots.
+    # Step 0: Ask whether to generate vibration plots.
     generate_lines_plots <- get_input_local("generate_lines_plots",
-                                            "❓ Do you want to generate line plots? (yes/no): ",
+                                            "❓ Do you want to generate vibration plots? (yes/no): ",
                                             validate_fn = function(x) tolower(x) %in% c("yes", "y", "no", "n"),
                                             transform_fn = function(x) tolower(trimws(x)),
                                             error_msg = "❌ Please enter 'yes' or 'no'.")
     if (generate_lines_plots %in% c("no", "n")) {
-      message("❌ Lineplot generation skipped as per user input.")
+      message("❌ Vibration plot generation skipped as per user input.")
       return(invisible(NULL))
     }
     
     # Step 0.5: Ask for output formats.
     generate_lines_plots_html <- get_input_local("generate_lines_plots_html",
-                                                 "❓ Generate interactive HTML line plots? (yes/no): ",
+                                                 "❓ Generate interactive HTML vibration plots? (yes/no): ",
                                                  validate_fn = function(x) tolower(x) %in% c("yes", "y", "no", "n"),
                                                  transform_fn = function(x) tolower(trimws(x)),
                                                  error_msg = "❌ Please enter 'yes' or 'no'.")
     generate_lines_plots_png <- get_input_local("generate_lines_plots_png",
-                                                "❓ Generate static PNG line plots? (yes/no): ",
+                                                "❓ Generate static PNG vibration plots? (yes/no): ",
                                                 validate_fn = function(x) tolower(x) %in% c("yes", "y", "no", "n"),
                                                 transform_fn = function(x) tolower(trimws(x)),
                                                 error_msg = "❌ Please enter 'yes' or 'no'.")
     
     if (generate_lines_plots_html %in% c("no", "n") && generate_lines_plots_png %in% c("no", "n")) {
-      message("❌ No output format selected. Skipping lineplot generation.")
+      message("❌ No output format selected. Skipping vibration plot generation.")
       return(invisible(NULL))
     }
     
     message("🔍 Validating input data structure...")
     if (!inherits(input_data, "data.frame")) {
-      message("❌ input_data must be a data frame. Skipping lineplot generation.")
+      message("❌ input_data must be a data frame. Skipping vibration plot generation.")
       return(invisible(NULL))
     }
     required_columns <- c("start_rounded", "zone", "condition", "condition_grouped")
@@ -106,7 +88,7 @@ generate_and_save_lineplots <- function(input_data = get("pretreated_data_for_li
       message("❌ input_data missing required columns: ", paste(required_columns, collapse = ", "), ". Skipping.")
       return(invisible(NULL))
     }
-    message("✔️ Data structure validated successfully.")
+    message("✔️ Data structure validated.")
     
     # Order conditions.
     if (exists("generated_condition_order", envir = .GlobalEnv)) {
@@ -123,15 +105,11 @@ generate_and_save_lineplots <- function(input_data = get("pretreated_data_for_li
                                           validate_fn = function(x) tolower(x) %in% c("yes", "y", "no", "n"),
                                           transform_fn = function(x) tolower(trimws(x)),
                                           error_msg = "❌ Please enter 'yes' or 'no'.")
-    if (keep_acclimatation %in% c("no", "n")) {
-      if ("period_with_numbers" %in% colnames(input_data)) {
-        input_data <- dplyr::filter(input_data, !grepl("acclimatation", period_with_numbers, ignore.case = TRUE))
-        message("✔️ Acclimatation period removed from the data.")
-      } else {
-        message("⚠️ 'period_with_numbers' column not found. Skipping acclimatation removal.")
-      }
+    if (keep_acclimatation %in% c("no", "n") && "period_with_numbers" %in% colnames(input_data)) {
+      input_data <- dplyr::filter(input_data, !grepl("acclimatation", period_with_numbers, ignore.case = TRUE))
+      message("✔️ Acclimatation period removed.")
     } else {
-      message("✔️ Acclimatation period retained in the data.")
+      message("✔️ Acclimatation period retained.")
     }
     
     # Step 2: Define output directories.
@@ -147,8 +125,9 @@ generate_and_save_lineplots <- function(input_data = get("pretreated_data_for_li
     condition_groups <- unique(input_data$condition_grouped)
     default_colors <- rep(c("#FF6666", "#66B2FF", "#99CC33", "#FFCC33", "#CC66FF"), length.out = length(condition_groups))
     names(default_colors) <- condition_groups
+    
     custom_color_input <- get_input_local("custom_color",
-                                          "🎨 Enter custom colors for conditions (comma-separated), or press Enter to use defaults: ",
+                                          "🎨 Enter custom colors for conditions (comma-separated), or press Enter for defaults: ",
                                           validate_fn = function(x) TRUE,
                                           transform_fn = function(x) {
                                             trimmed <- trimws(x)
@@ -167,7 +146,20 @@ generate_and_save_lineplots <- function(input_data = get("pretreated_data_for_li
       custom_colors <- default_colors
       message("✔️ Using default colors: ", paste(custom_colors, collapse = ", "))
     }
+    
+    generated_colors <- list()
+    if (!exists("lighten", mode = "function")) {
+      lighten <- function(color, factor = 0.4) { color }
+    }
+    for (group in condition_groups) {
+      group_conditions <- grep(paste0("^", group), unique(input_data$condition), value = TRUE)
+      color_palette <- colorRampPalette(c(custom_colors[group], lighten(custom_colors[group], 0.4)))(length(group_conditions))
+      names(color_palette) <- group_conditions
+      generated_colors <- c(generated_colors, color_palette)
+    }
     assign("custom_colors_global", custom_colors, envir = .GlobalEnv)
+    assign("generated_colors_global", generated_colors, envir = .GlobalEnv)
+    message("✔️ Colors saved globally.")
     
     # Define themes.
     light_theme <- theme_bw() %+replace% theme(
@@ -195,7 +187,7 @@ generate_and_save_lineplots <- function(input_data = get("pretreated_data_for_li
       legend.background = element_rect(fill = "black"),
       legend.key = element_rect(fill = "black"),
       strip.text.x = element_text(size = 12, color = "white"),
-      strip.background = element_rect(fill = "black", color = "white"),
+      strip.background = element_rect(fill = "black", color = "black"),
       plot.background = element_rect(fill = "black"),
       panel.background = element_rect(fill = "black"),
       panel.border = element_rect(color = "white", fill = NA),
@@ -204,54 +196,41 @@ generate_and_save_lineplots <- function(input_data = get("pretreated_data_for_li
       plot.caption = element_text(color = "white", size = 8, hjust = 1, margin = margin(t = 10))
     )
     
-    # Step 7: Ask for output formats.
-    generate_lines_plots_html <- get_input_local("generate_lines_plots_html",
-                                                 "❓ Generate interactive HTML line plots? (yes/no): ",
-                                                 validate_fn = function(x) tolower(x) %in% c("yes", "y", "no", "n"),
-                                                 transform_fn = function(x) tolower(trimws(x)),
-                                                 error_msg = "❌ Please enter 'yes' or 'no'.")
-    generate_lines_plots_png <- get_input_local("generate_lines_plots_png",
-                                                "❓ Generate static PNG line plots? (yes/no): ",
-                                                validate_fn = function(x) tolower(x) %in% c("yes", "y", "no", "n"),
-                                                transform_fn = function(x) tolower(trimws(x)),
-                                                error_msg = "❌ Please enter 'yes' or 'no'.")
-    
-    # Step 8: Generate delta boxplots if requested.
-    if (do_plot_generation) {
-      message("⏳ Generating line plots... This may take a moment.")
-      for (response_var in grep("^sum_", colnames(input_data), value = TRUE)) {
-        for (zone_number in unique(input_data$zone)) {
-          zone_data <- dplyr::filter(input_data, zone == zone_number)
-          if (!all(c("start_rounded", response_var) %in% colnames(zone_data))) {
-            message(sprintf("⚠️ Missing required columns for zone %s. Skipping...", zone_number))
-            next
+    # Step 4: Generate vibration plots.
+    response_vars <- grep("^sum_", colnames(input_data), value = TRUE)
+    message("⏳ Generating vibration plots... This may take a moment.")
+    for (response_var in response_vars) {
+      for (zone_number in unique(input_data$zone)) {
+        zone_data <- dplyr::filter(input_data, zone == zone_number)
+        if (!all(c("start_rounded", response_var) %in% colnames(zone_data))) {
+          message(sprintf("⚠️ Missing columns for zone %s. Skipping...", zone_number))
+          next
+        }
+        for (theme_name in c("light", "dark")) {
+          current_theme <- if (theme_name == "light") light_theme else dark_theme
+          p <- ggplot(zone_data, aes(x = start_rounded, y = .data[[response_var]], color = condition, group = condition)) +
+            geom_point(size = 2) +
+            geom_line(linewidth = 0.8) +
+            geom_vline(xintercept = period_boundaries, linetype = "dashed",
+                       color = if (theme_name == "light") "black" else "white", alpha = 0.7) +
+            labs(x = "Time (minutes)", y = sprintf("%s (Zone %s)", response_var, zone_number)) +
+            current_theme
+          
+          if (generate_lines_plots_png %in% c("yes", "y")) {
+            png_file <- file.path(png_path, sprintf("plot_%s_zone_%s_%s.png", response_var, zone_number, theme_name))
+            ggsave(filename = png_file, plot = p, width = 12, height = 9, dpi = 300)
+            message("✔️ PNG saved: ", png_file)
           }
-          for (theme_name in c("light", "dark")) {
-            current_theme <- if (theme_name == "light") light_theme else dark_theme
-            p <- ggplot(zone_data, aes(x = start_rounded, y = .data[[response_var]], color = condition, group = condition)) +
-              geom_point(size = 2) +
-              geom_line(linewidth = 0.8) +
-              geom_vline(xintercept = period_boundaries, linetype = "dashed",
-                         color = if (theme_name == "light") "black" else "white", alpha = 0.7) +
-              labs(x = "Time (minutes)", y = sprintf("%s (Zone %s)", response_var, zone_number)) +
-              current_theme
-            
-            if (generate_lines_plots_png %in% c("yes", "y")) {
-              png_file <- file.path(png_path, sprintf("plot_%s_zone_%s_%s.png", response_var, zone_number, theme_name))
-              ggsave(filename = png_file, plot = p, width = 12, height = 9, dpi = 300)
-              message("✔️ PNG saved: ", png_file)
-            }
-            if (generate_lines_plots_html %in% c("yes", "y")) {
-              interactive_plot <- plotly::ggplotly(p)
-              html_file <- file.path(html_path, sprintf("plot_%s_zone_%s_%s.html", response_var, zone_number, theme_name))
-              htmlwidgets::saveWidget(interactive_plot, html_file, selfcontained = TRUE)
-              message("✔️ HTML saved: ", html_file)
-            }
+          if (generate_lines_plots_html %in% c("yes", "y")) {
+            interactive_plot <- plotly::ggplotly(p)
+            html_file <- file.path(html_path, sprintf("plot_%s_zone_%s_%s.html", response_var, zone_number, theme_name))
+            htmlwidgets::saveWidget(interactive_plot, html_file, selfcontained = TRUE)
+            message("✔️ HTML saved: ", html_file)
           }
         }
       }
-      message("🎉 Lineplot generation completed!\n")
     }
+    message("🎉 Vibration plot generation completed!\n")
     
   }, error = function(e) {
     message("❌ Error in generate_and_save_lineplots: ", e$message)

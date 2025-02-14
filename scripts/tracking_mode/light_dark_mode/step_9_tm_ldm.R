@@ -1,7 +1,7 @@
 # -----------------------------------------------------------
 # File: generate_and_save_boxplots_with_excel_files.R
 # -----------------------------------------------------------
-# Harmonized version of the generate_and_save_boxplots_with_excel_files function for light dark mode.
+# Harmonized version of the generate_and_save_boxplots_with_excel_files function.
 # This function generates boxplots from the pretreated boxplot data,
 # validates the data structure, manages colors and themes, saves plots in PNG/HTML,
 # and writes pairwise percentage differences to an Excel file with conditional formatting.

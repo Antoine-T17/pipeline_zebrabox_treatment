@@ -1,7 +1,6 @@
 # -----------------------------------------------------------
 # File: generate_plate_plan.R
-# -----------------------------------------------------------
-# Harmonized version of the generate_plate_plan function for light dark mode.
+# Harmonized version of the generate_plate_plan function for light dark mode (tm_ldm).
 # This function assists in creating a new plate plan or loading an existing one.
 # It retrieves inputs (either pre-recorded or interactively) via a unified helper
 # and saves the resulting plate plan globally as 'plate_plan_df'.
@@ -23,25 +22,8 @@ generate_plate_plan <- function(plan_dir = "inputs/tracking_mode/light_dark_mode
   message("   • Work with both '.csv' and '.xlsx' file formats.")
   message("   • Save the plate plan for later use.\n")
   
-  # Load pre-recorded inputs.
-  pipeline_inputs <- list()
-  inputs_path <- "inputs/inputs_values"
-  inputs_file_xlsx <- file.path(inputs_path, "pipeline_inputs.xlsx")
-  inputs_file_csv  <- file.path(inputs_path, "pipeline_inputs.csv")
-  
-  if (file.exists(inputs_file_xlsx)) {
-    df <- readxl::read_excel(inputs_file_xlsx, sheet = 1)
-    if (!all(c("parameters", "input") %in% colnames(df))) {
-      stop("❌ The pipeline_inputs.xlsx file must contain columns 'parameters' and 'input'.")
-    }
-    pipeline_inputs <- setNames(as.list(df$input), df$parameters)
-  } else if (file.exists(inputs_file_csv)) {
-    df <- read.csv2(inputs_file_csv, sep = ";", dec = ".", header = TRUE, stringsAsFactors = FALSE)
-    if (!all(c("parameters", "input") %in% colnames(df))) {
-      stop("❌ The pipeline_inputs.csv file must contain columns 'parameters' and 'input'.")
-    }
-    pipeline_inputs <- setNames(as.list(df$input), df$parameters)
-  }
+  # Retrieve pre-recorded inputs from the global pipeline_inputs.
+  pipeline_inputs <- get("pipeline_inputs", envir = .GlobalEnv)
   
   # Unified helper to retrieve inputs.
   get_input_local <- function(param, prompt_msg, validate_fn = function(x) TRUE,

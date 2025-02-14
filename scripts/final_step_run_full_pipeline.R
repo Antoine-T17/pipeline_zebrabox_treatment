@@ -1,47 +1,72 @@
 # -----------------------------------------------------------
-# final_step_run_full_pipeline.R
+# File: final_step_run_full_pipeline.R
 # -----------------------------------------------------------
 # This script runs the full Zebrabox Experiment Pipeline.
 #
 # It does the following:
-#   1. Loads pre-recorded inputs (if available) from a pipeline inputs file.
-#   2. Prompts the user for settings (primary mode, secondary mode, clear outputs, etc.)
-#      using pre-recorded inputs when available.
+#   1. Loads pre-recorded inputs from a multi-sheet pipeline_inputs.xlsx file.
+#      The first sheet ("select_the_path") contains mode selections.
+#      Based on these, the corresponding sheet (e.g. "tm_ldm") is loaded.
+#   2. Prompts the user for additional settings using pre-recorded inputs when available.
 #   3. Records all used inputs in a global data frame (input_record_df).
 #   4. Loads step scripts based on the selected modes and then runs the full pipeline.
-#
-# The pipeline steps (e.g., generate_plate_plan, extract_data, etc.) are assumed to be
-# defined in the appropriate step_1, step_2, …, step_12 scripts.
 # -----------------------------------------------------------
 
 # Global list to record all input values (will be converted to a data frame later)
 input_record_list <<- list()
 
-# Function to load pre-recorded inputs from the pipeline inputs file.
+# Function to load pipeline inputs from a multi-sheet Excel file.
 load_pipeline_inputs <- function() {
-  pipeline_inputs <- list()
   inputs_path <- "inputs/inputs_values"
-  inputs_file_xlsx <- file.path(inputs_path, "pipeline_inputs.xlsx")
-  inputs_file_csv <- file.path(inputs_path, "pipeline_inputs.csv")
+  pipeline_file <- file.path(inputs_path, "pipeline_inputs.xlsx")
   
-  if (file.exists(inputs_file_xlsx)) {
-    df <- readxl::read_excel(inputs_file_xlsx, sheet = 1)
-    if (!all(c("parameters", "input") %in% colnames(df))) {
-      stop("The pipeline_inputs.xlsx file must contain the columns 'parameters' and 'input'.")
-    }
-    pipeline_inputs <- setNames(as.list(df$input), df$parameters)
-  } else if (file.exists(inputs_file_csv)) {
-    df <- read.csv2(inputs_file_csv, sep = ";", dec = ".", header = TRUE, stringsAsFactors = FALSE)
-    if (!all(c("parameters", "input") %in% colnames(df))) {
-      stop("The pipeline_inputs.csv file must contain the columns 'parameters' and 'input'.")
-    }
-    pipeline_inputs <- setNames(as.list(df$input), df$parameters)
+  if (!file.exists(pipeline_file)) {
+    stop("❌ Pipeline inputs file not found at: ", pipeline_file)
   }
+  
+  # Load the "select_the_path" sheet.
+  select_df <- readxl::read_excel(pipeline_file, sheet = "select_the_path")
+  if (!all(c("parameters", "input") %in% colnames(select_df))) {
+    stop("❌ The 'select_the_path' sheet must contain columns 'parameters' and 'input'.")
+  }
+  select_inputs <- setNames(as.list(select_df$input), select_df$parameters)
+  
+  # Extract mode selections.
+  primary_mode <- tolower(trimws(select_inputs[["primary_mode"]]))
+  secondary_mode <- tolower(trimws(select_inputs[["secondary_mode"]]))
+  
+  # Map to abbreviated sheet names.
+  primary_abbrev <- switch(primary_mode,
+                           "tracking_mode" = "tm",
+                           "tm" = "tm",
+                           "quantization_mode" = "qm",
+                           "qm" = "qm",
+                           stop("Invalid primary_mode in 'select_the_path'."))
+  secondary_abbrev <- switch(secondary_mode,
+                             "light_dark_mode" = "ldm",
+                             "ldm" = "ldm",
+                             "vibration_mode" = "vm",
+                             "vm" = "vm",
+                             stop("Invalid secondary_mode in 'select_the_path'."))
+  
+  target_sheet <- paste0(primary_abbrev, "_", secondary_abbrev)
+  message("🔎 Loading pipeline inputs from sheet: ", target_sheet)
+  
+  df <- readxl::read_excel(pipeline_file, sheet = target_sheet)
+  if (!all(c("parameters", "input") %in% colnames(df))) {
+    stop("❌ The ", target_sheet, " sheet must contain columns 'parameters' and 'input'.")
+  }
+  pipeline_inputs <- setNames(as.list(df$input), df$parameters)
+  
+  # Merge in the basic selections.
+  pipeline_inputs[["primary_mode"]] <- primary_mode
+  pipeline_inputs[["secondary_mode"]] <- secondary_mode
+  pipeline_inputs[["clean_output_directory"]] <- tolower(trimws(select_inputs[["clean_output_directory"]]))
+  
   return(pipeline_inputs)
 }
 
-# Generic helper function to get input (either from pre-recorded values or interactively)
-# and record the used input.
+# Generic helper function to get input (from pipeline_inputs or interactively)
 get_input <- function(param, prompt_msg, validate_fn = function(x) TRUE,
                       transform_fn = function(x) x,
                       error_msg = "Invalid input. Please try again.", pipeline_inputs) {
@@ -74,9 +99,9 @@ check_and_install_packages <- function(packages) {
   suppressWarnings(suppressPackageStartupMessages({
     for (pkg in packages) {
       if (!requireNamespace(pkg, quietly = TRUE)) {
-        install.packages(pkg, quiet = TRUE) # Install silently if not found
+        install.packages(pkg, quiet = TRUE)
       }
-      library(pkg, character.only = TRUE, quietly = TRUE) # Load silently
+      library(pkg, character.only = TRUE, quietly = TRUE)
     }
   }))
 }
@@ -87,7 +112,7 @@ prompt_clear_outputs <- function(output_base_dir, pipeline_inputs) {
                             "❓ Do you want to empty the outputs directory before proceeding? (yes/y or no/n): ",
                             validate_fn = function(x) x %in% c("yes", "y", "no", "n"),
                             transform_fn = function(x) tolower(trimws(x)),
-                            error_msg = "⚠️ Invalid response. Please enter 'yes/y' or 'no/n'.",
+                            error_msg = "⚠️ Please enter 'yes/y' or 'no/n'.",
                             pipeline_inputs = pipeline_inputs)
   
   if (clean_output %in% c("yes", "y")) {
@@ -104,15 +129,15 @@ prompt_clear_outputs <- function(output_base_dir, pipeline_inputs) {
   }
 }
 
-# Function to display pipeline guidelines and prompt for modes.
+# Function to display pipeline guidelines and prompt for mode selections.
 prompt_guidelines <- function(pipeline_inputs) {
   message("\n---\n")
   message("👋 Welcome to the Zebrabox Experiment Pipeline!\n")
   message("📋 This pipeline guides you through the following steps:")
-  message("  • Generate a fully randomized plate layout for your Zebrabox experiments.")
-  message("  • Extract raw data obtained from the Zebrabox.")
-  message("  • Format and preprocess the extracted data for visualization.")
-  message("  • Create figures and tables to visualize your experimental results.\n")
+  message("  • Generate a randomized plate layout for your Zebrabox experiments.")
+  message("  • Extract raw data from the Zebrabox.")
+  message("  • Preprocess and format the data for visualization.")
+  message("  • Create figures and tables to display experimental results.\n")
   
   primary_mode_map <- list(
     tm = "tracking_mode",
@@ -128,22 +153,22 @@ prompt_guidelines <- function(pipeline_inputs) {
   )
   
   primary_input <- get_input("primary_mode",
-                             "❓ Select the primary mode you want to use (tracking_mode/tm or quantization_mode/qm): ",
+                             "❓ Select the primary mode (tracking_mode/tm or quantization_mode/qm): ",
                              validate_fn = function(x) x %in% names(primary_mode_map),
                              transform_fn = function(x) tolower(trimws(x)),
-                             error_msg = "⚠️ Invalid input. Please type 'tracking_mode/tm' or 'quantization_mode/qm'.",
+                             error_msg = "⚠️ Please enter 'tracking_mode/tm' or 'quantization_mode/qm'.",
                              pipeline_inputs = pipeline_inputs)
   primary_mode <- primary_mode_map[[primary_input]]
   if (primary_mode == "quantization_mode") {
-    message("⚠️ Quantization mode is still under development ('encore en travaux l'équipe'). Exiting the function.")
+    message("⚠️ Quantization mode is under development. Exiting.")
     return(NULL)
   }
   
   secondary_input <- get_input("secondary_mode",
-                               "❓ Select the secondary mode you want to use (light_dark_mode/ldm or vibration_mode/vm): ",
+                               "❓ Select the secondary mode (light_dark_mode/ldm or vibration_mode/vm): ",
                                validate_fn = function(x) x %in% names(secondary_mode_map),
                                transform_fn = function(x) tolower(trimws(x)),
-                               error_msg = "⚠️ Invalid input. Please type 'light_dark_mode/ldm' or 'vibration_mode/vm'.",
+                               error_msg = "⚠️ Please enter 'light_dark_mode/ldm' or 'vibration_mode/vm'.",
                                pipeline_inputs = pipeline_inputs)
   secondary_mode <- secondary_mode_map[[secondary_input]]
   
@@ -162,7 +187,7 @@ prompt_guidelines <- function(pipeline_inputs) {
   }
   
   message("\n📦 All necessary packages are installed and loaded. You are ready to proceed!")
-  message("🎯 You're all set! The pipeline will run in ", primary_mode, " > ", secondary_mode, ".")
+  message("🎯 The pipeline will run in ", primary_mode, " > ", secondary_mode, ".")
   message("\n---\n")
   
   return(list(primary_mode = primary_mode, secondary_mode = secondary_mode))
@@ -174,13 +199,13 @@ load_mode_scripts <- function(primary_mode, secondary_mode) {
     primary_mode,
     "tracking_mode" = "tm",
     "quantization_mode" = "qm",
-    stop("Invalid primary mode provided. Check your input.")
+    stop("Invalid primary mode.")
   )
   secondary_abbrev <- switch(
     secondary_mode,
     "light_dark_mode" = "ldm",
     "vibration_mode" = "vm",
-    stop("Invalid secondary mode provided. Check your input.")
+    stop("Invalid secondary mode.")
   )
   
   base_path <- file.path("scripts", primary_mode, secondary_mode)
@@ -198,8 +223,8 @@ load_mode_scripts <- function(primary_mode, secondary_mode) {
 
 # Function to run the full pipeline.
 run_full_pipeline <- function() {
-  # Load pre-recorded inputs.
-  pipeline_inputs <- load_pipeline_inputs()
+  # Load pipeline inputs from the multi-sheet Excel file.
+  pipeline_inputs <<- load_pipeline_inputs()
   
   # Prompt for primary and secondary modes.
   modes <- prompt_guidelines(pipeline_inputs)
@@ -207,14 +232,13 @@ run_full_pipeline <- function() {
   primary_mode <- modes$primary_mode
   secondary_mode <- modes$secondary_mode
   
-  # Set up the outputs directory and prompt whether to clear it.
+  # Set up outputs directory.
   output_base_dir <- file.path("outputs", primary_mode, secondary_mode)
   prompt_clear_outputs(output_base_dir, pipeline_inputs)
-  
   dir.create(file.path(output_base_dir, "figures/lineplots"), recursive = TRUE, showWarnings = FALSE)
   dir.create(file.path(output_base_dir, "figures/boxplots"), recursive = TRUE, showWarnings = FALSE)
   
-  # Load mode-specific scripts (e.g., step_1, step_2, …, step_12).
+  # Load mode-specific scripts.
   load_mode_scripts(primary_mode, secondary_mode)
   
   # Run the pipeline steps.
@@ -241,3 +265,5 @@ run_full_pipeline <- function() {
   return(pretreated_data)
 }
 
+# Run the full pipeline.
+run_full_pipeline()

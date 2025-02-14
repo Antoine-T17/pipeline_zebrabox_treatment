@@ -2,6 +2,7 @@
 # File: prepare_delta_data_for_analysis.R
 # -----------------------------------------------------------
 # Harmonized version of the prepare_delta_data_for_analysis function for light dark mode.
+# Harmonized version of the prepare_delta_data_for_analysis function.
 # This function prepares data for delta analysis by:
 #   • Displaying available period boundaries.
 #   • Prompting for selected boundaries and a delta value.
@@ -29,24 +30,8 @@ prepare_delta_data_for_analysis <- function(zone_calculated_list = get("zone_cal
     paste0("Boundary: ", row["boundary_time"], " (", row["transition"], ")")
   }), collapse = "\n"))
   
-  # Load pre-recorded inputs.
-  pipeline_inputs <- list()
-  inputs_path <- "inputs/inputs_values"
-  inputs_file_xlsx <- file.path(inputs_path, "pipeline_inputs.xlsx")
-  inputs_file_csv  <- file.path(inputs_path, "pipeline_inputs.csv")
-  if (file.exists(inputs_file_xlsx)) {
-    df <- readxl::read_excel(inputs_file_xlsx, sheet = 1)
-    if (!all(c("parameters", "input") %in% colnames(df))) {
-      stop("❌ The pipeline_inputs.xlsx file must contain columns 'parameters' and 'input'.")
-    }
-    pipeline_inputs <- setNames(as.list(df$input), df$parameters)
-  } else if (file.exists(inputs_file_csv)) {
-    df <- read.csv2(inputs_file_csv, sep = ";", dec = ".", header = TRUE, stringsAsFactors = FALSE)
-    if (!all(c("parameters", "input") %in% colnames(df))) {
-      stop("❌ The pipeline_inputs.csv file must contain columns 'parameters' and 'input'.")
-    }
-    pipeline_inputs <- setNames(as.list(df$input), df$parameters)
-  }
+  # Retrieve pre-recorded inputs from the global pipeline_inputs.
+  pipeline_inputs <- get("pipeline_inputs", envir = .GlobalEnv)
   
   # Unified input helper.
   get_input_local <- function(param, prompt_msg, validate_fn = function(x) TRUE,

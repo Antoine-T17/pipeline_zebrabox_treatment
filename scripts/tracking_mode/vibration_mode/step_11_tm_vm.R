@@ -1,7 +1,7 @@
 # -----------------------------------------------------------
 # File: generate_and_save_boxplots_delta_with_excel_files.R
 # -----------------------------------------------------------
-# Harmonized version of the generate_and_save_boxplots_delta_with_excel_files function for vibration_mode.
+# Harmonized version of the generate_and_save_boxplots_delta_with_excel_files function for vibration mode.
 # This function generates delta boxplots from pretreated delta data,
 # validates data structure, orders conditions, manages colors and themes,
 # prompts for output formats, and writes pairwise percentage differences to an Excel file.
@@ -11,38 +11,22 @@ generate_and_save_boxplots_delta_with_excel_files <- function(input_data = get("
                                                               output_dir = "outputs/tracking_mode/vibration_mode/figures/boxplots",
                                                               excel_output_dir = "outputs/tracking_mode/vibration_mode/tables") {
   message("\n---\n")
-  message("👋 Welcome to the Delta Boxplot Generation Process!\n")
+  message("👋 Welcome to the Delta Boxplot Generation Process for Vibration Mode!\n")
   message("📋 This function will help you:")
-  message("   • Generate delta boxplots to visualize experimental data differences.")
+  message("   • Generate delta boxplots to visualize experimental data differences in vibration mode.")
   message("   • Customize plots with themes and custom colors.")
   message("   • Save plots in PNG and/or interactive HTML formats.")
   message("   • Write pairwise percentage differences to an Excel file.\n")
   
-  # Load pre-recorded inputs.
-  pipeline_inputs <- list()
-  inputs_path <- "inputs/inputs_values"
-  inputs_file_xlsx <- file.path(inputs_path, "pipeline_inputs.xlsx")
-  inputs_file_csv  <- file.path(inputs_path, "pipeline_inputs.csv")
-  if (file.exists(inputs_file_xlsx)) {
-    df <- readxl::read_excel(inputs_file_xlsx, sheet = 1)
-    if (!all(c("parameters", "input") %in% colnames(df))) {
-      stop("❌ The pipeline_inputs.xlsx file must contain columns 'parameters' and 'input'.")
-    }
-    pipeline_inputs <- setNames(as.list(df$input), df$parameters)
-  } else if (file.exists(inputs_file_csv)) {
-    df <- read.csv2(inputs_file_csv, sep = ";", dec = ".", header = TRUE, stringsAsFactors = FALSE)
-    if (!all(c("parameters", "input") %in% colnames(df))) {
-      stop("❌ The pipeline_inputs.csv file must contain columns 'parameters' and 'input'.")
-    }
-    pipeline_inputs <- setNames(as.list(df$input), df$parameters)
-  }
+  # Retrieve pre-recorded inputs from the global pipeline_inputs.
+  pipeline_inputs <- get("pipeline_inputs", envir = .GlobalEnv)
   
   # Unified input helper.
   get_input_local <- function(param, prompt_msg, validate_fn = function(x) TRUE,
                               transform_fn = function(x) x,
                               error_msg = "❌ Invalid input. Please try again.") {
-    if (!is.null(pipeline_inputs[[param]]) && pipeline_inputs[[param]] != "" &&
-        !is.na(pipeline_inputs[[param]])) {
+    if (!is.null(pipeline_inputs[[param]]) && !is.na(pipeline_inputs[[param]]) &&
+        pipeline_inputs[[param]] != "") {
       candidate <- transform_fn(as.character(pipeline_inputs[[param]]))
       if (validate_fn(candidate)) {
         message("💾 Using pre-recorded input for '", param, "': ", candidate)
@@ -75,7 +59,7 @@ generate_and_save_boxplots_delta_with_excel_files <- function(input_data = get("
                                              error_msg = "❌ Please enter 'yes' or 'no'.")
   generate_delta_boxplots <- generate_delta_boxplots %in% c("yes", "y")
   if (generate_delta_boxplots) {
-    message("✔️ Proceeding with delta boxplot generation.")
+    message("✔️ Proceeding with delta boxplot generation for vibration mode.")
   } else {
     message("❌ Delta boxplot generation skipped. The Excel file will still be generated.")
   }
@@ -101,7 +85,7 @@ generate_and_save_boxplots_delta_with_excel_files <- function(input_data = get("
   }
   
   # Step 4: Define output directories.
-  message("📁 Creating output directories for delta boxplots...")
+  message("📁 Creating output directories for delta boxplots (vibration mode)...")
   html_path <- file.path(output_dir, "html")
   png_path  <- file.path(output_dir, "png")
   jpg_path  <- file.path(output_dir, "jpg")
@@ -134,39 +118,43 @@ generate_and_save_boxplots_delta_with_excel_files <- function(input_data = get("
   message("✔️ Delta colors: before: ", colors["before"], "; switch: ", colors["switch"], "; after: ", colors["after"])
   
   # Step 6: Define themes.
-  light_theme <- theme_bw() %+replace% theme(
-    plot.title = element_text(color = "black", size = 14, hjust = 0.5),
-    axis.text.y = element_text(color = "black", size = 12),
-    axis.text.x = element_text(color = "black", size = 12),
-    axis.title.x = element_text(color = "black", size = 12, margin = margin(t = 5, r = 15)),
-    axis.title.y = element_text(color = "black", size = 12, angle = 90, margin = margin(r = 10)),
-    legend.position = "right",
-    legend.text = element_text(color = "black", size = 12, face = "italic"),
-    legend.title = element_blank(),
-    strip.text.x = element_text(size = 12),
-    strip.background = element_rect(fill = "white"),
-    plot.caption = element_text(color = "black", size = 8, hjust = 1, margin = margin(t = 10))
-  )
-  dark_theme <- theme_bw() %+replace% theme(
-    plot.title = element_text(color = "white", size = 14, hjust = 0.5),
-    axis.text.y = element_text(color = "white", size = 12),
-    axis.text.x = element_text(color = "white", size = 12),
-    axis.title.x = element_text(color = "white", size = 12, margin = margin(t = 5, r = 15)),
-    axis.title.y = element_text(color = "white", size = 12, angle = 90, margin = margin(r = 10)),
-    legend.position = "right",
-    legend.text = element_text(color = "white", size = 12, face = "italic"),
-    legend.title = element_blank(),
-    legend.background = element_rect(fill = "black"),
-    legend.key = element_rect(fill = "black"),
-    strip.text.x = element_text(size = 12, color = "white"),
-    strip.background = element_rect(fill = "black", color = "white"),
-    plot.background = element_rect(fill = "black"),
-    panel.background = element_rect(fill = "black"),
-    panel.border = element_rect(color = "white", fill = NA),
-    panel.grid.major = element_line(color = "grey30"),
-    panel.grid.minor = element_line(color = "grey30"),
-    plot.caption = element_text(color = "white", size = 8, hjust = 1, margin = margin(t = 10))
-  )
+  light_theme <- function(base_size = 11, base_family = "") {
+    theme_bw() %+replace% theme(
+      plot.title = element_text(color = "black", size = 14, hjust = 0.5),
+      axis.text.y = element_text(color = "black", size = 12),
+      axis.text.x = element_text(color = "black", size = 12),
+      axis.title.x = element_text(color = "black", size = 12, margin = margin(t = 5, r = 15)),
+      axis.title.y = element_text(color = "black", size = 12, angle = 90, margin = margin(r = 10)),
+      legend.position = "right",
+      legend.text = element_text(color = "black", size = 12, face = "italic"),
+      legend.title = element_blank(),
+      strip.text.x = element_text(size = 12),
+      strip.background = element_rect(fill = "white"),
+      plot.caption = element_text(color = "black", size = 8, hjust = 1, margin = margin(t = 10))
+    )
+  }
+  dark_theme <- function(base_size = 11, base_family = "") {
+    theme_bw() %+replace% theme(
+      plot.title = element_text(color = "white", size = 14, hjust = 0.5),
+      axis.text.y = element_text(color = "white", size = 12),
+      axis.text.x = element_text(color = "white", size = 12),
+      axis.title.x = element_text(color = "white", size = 12, margin = margin(t = 5, r = 15)),
+      axis.title.y = element_text(color = "white", size = 12, angle = 90, margin = margin(r = 10)),
+      legend.position = "right",
+      legend.text = element_text(color = "white", size = 12, face = "italic"),
+      legend.title = element_blank(),
+      legend.background = element_rect(fill = "black"),
+      legend.key = element_rect(fill = "black"),
+      strip.text.x = element_text(size = 12, color = "white"),
+      strip.background = element_rect(fill = "black", color = "white"),
+      plot.background = element_rect(fill = "black"),
+      panel.background = element_rect(fill = "black"),
+      panel.border = element_rect(color = "white", fill = NA),
+      panel.grid.major = element_line(color = "grey30"),
+      panel.grid.minor = element_line(color = "grey30"),
+      plot.caption = element_text(color = "white", size = 8, hjust = 1, margin = margin(t = 10))
+    )
+  }
   
   # Step 7: Prompt for output formats.
   generate_delta_boxplots_html <- get_input_local("generate_delta_boxplots_html",
@@ -196,10 +184,7 @@ generate_and_save_boxplots_delta_with_excel_files <- function(input_data = get("
               geom_jitter(position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.75),
                           alpha = 0.6, color = if (theme_name == "light") "black" else "white") +
               labs(x = "Conditions", y = sprintf("%s (Zone %s)", response_var, zone_number), fill = "Momentum") +
-              current_theme +
-              scale_fill_manual(values = if (exists("custom_colors_global", envir = .GlobalEnv))
-                get("custom_colors_global", envir = .GlobalEnv)
-                else colors)
+              current_theme
             p
           }, error = function(e) {
             message("❌ Error creating plot for ", response_var, ", zone ", zone_number, ", theme ", theme_name, ": ", e$message)
@@ -228,7 +213,7 @@ generate_and_save_boxplots_delta_with_excel_files <- function(input_data = get("
         }
       }
     }
-    message("🎉 Delta boxplots generated successfully!\n")
+    message("🎉 Delta boxplots generated!")
   } else {
     message("❌ Delta boxplot generation skipped.")
   }

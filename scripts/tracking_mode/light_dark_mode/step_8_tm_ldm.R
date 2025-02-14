@@ -1,7 +1,7 @@
 # -----------------------------------------------------------
 # File: generate_and_save_lineplots.R
 # -----------------------------------------------------------
-# Harmonized version of the generate_and_save_lineplots function for light dark mode.
+# Harmonized version of the generate_and_save_lineplots function.
 # This function generates line plots from the pretreated line plot data,
 # validates the data structure, manages colors and themes, and saves plots
 # in PNG and/or interactive HTML formats to specified directories.

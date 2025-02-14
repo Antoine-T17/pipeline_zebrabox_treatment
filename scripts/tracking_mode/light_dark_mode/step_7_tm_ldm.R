@@ -1,11 +1,27 @@
 # -----------------------------------------------------------
 # File: pre_visualization_data_treatment.R
 # -----------------------------------------------------------
-# Harmonized version of the pre_visualization_data_treatment function for light dark mode.
-# This function prepares combined zone data for visualization.
-# It prompts for condition ordering, removal of conditions and suspect wells,
-# calculates well counts, normalizes sums, filters light/dark periods,
-# and saves outputs for line and box plots globally.
+# This function prepares the combined zone data for visualization.
+# It performs the following tasks:
+#
+#   1. Prompts the user (or uses pre-recorded inputs) to define:
+#         - The desired order of conditions (conditions_order)
+#         - The desired order of condition_grouped (conditions_grouped_order)
+#         - Conditions to remove (remove_conditions)
+#         - Suspect wells to remove (remove_suspect_well)
+#         - The aggregation period in seconds (aggregation_period)
+#         - The light periods to include (light_period)
+#         - The dark periods to include (dark_period)
+#   2. Saves the condition orders globally.
+#   3. Removes unwanted conditions and suspect wells from the data.
+#   4. Calculates the number of wells per condition and zone.
+#   5. Rounds the 'start' time based on the aggregation period and calculates normalized sums.
+#   6. Filters the data for light and dark periods and calculates mean values for boxplots.
+#   7. Saves the outputs in the global environment as datasets for line plots and box plots.
+#
+# Note: This function records its used inputs in the global list 
+#       'input_record_list'. Ensure that input_record_list is initialized 
+#       in your main script.
 # -----------------------------------------------------------
 
 pre_visualization_data_treatment <- function(zone_combined_data) {

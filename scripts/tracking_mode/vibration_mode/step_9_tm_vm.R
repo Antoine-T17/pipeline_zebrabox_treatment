@@ -1,9 +1,10 @@
 # -----------------------------------------------------------
 # File: generate_and_save_boxplots_with_excel_files.R
 # -----------------------------------------------------------
-# Harmonized version of the generate_and_save_boxplots_with_excel_files function for vibration_mode.
-# This function generates boxplots from the pretreated boxplot data,
-# validates the data structure, manages colors and themes, saves plots in PNG/HTML formats,
+# Harmonized version of the generate_and_save_boxplots_with_excel_files function
+# adapted for vibration mode.
+# This function generates vibration boxplots from the pretreated boxplot data,
+# validates the data structure, manages colors and themes, saves plots in PNG/HTML,
 # and writes pairwise percentage differences to an Excel file with conditional formatting.
 # -----------------------------------------------------------
 
@@ -12,33 +13,15 @@ generate_and_save_boxplots_with_excel_files <- function(input_data = get("pretre
                                                         excel_output_dir = "outputs/tracking_mode/vibration_mode/tables") {
   tryCatch({
     message("\n---\n")
-    message("👋 Welcome to the Boxplot Generation Process!\n")
+    message("👋 Welcome to the Vibration Boxplot Generation Process!\n")
     message("📋 This function will help you:")
-    message("   • Generate boxplots for visualizing experimental data.")
+    message("   • Generate vibration boxplots for visualizing experimental data.")
     message("   • Customize plots using themes and colors.")
     message("   • Save plots in PNG and/or interactive HTML formats.")
     message("   • Write pairwise percentage differences to an Excel file.\n")
     
-    # Load pre-recorded inputs.
-    pipeline_inputs <- list()
-    inputs_path <- "inputs/inputs_values"
-    inputs_file_xlsx <- file.path(inputs_path, "pipeline_inputs.xlsx")
-    inputs_file_csv  <- file.path(inputs_path, "pipeline_inputs.csv")
-    if (file.exists(inputs_file_xlsx)) {
-      df <- readxl::read_excel(inputs_file_xlsx, sheet = 1)
-      if (!all(c("parameters", "input") %in% colnames(df))) {
-        message("❌ Missing required columns in pipeline_inputs.xlsx. Skipping boxplot generation.")
-        return(invisible(NULL))
-      }
-      pipeline_inputs <- setNames(as.list(df$input), df$parameters)
-    } else if (file.exists(inputs_file_csv)) {
-      df <- read.csv2(inputs_file_csv, sep = ";", dec = ".", header = TRUE, stringsAsFactors = FALSE)
-      if (!all(c("parameters", "input") %in% colnames(df))) {
-        message("❌ Missing required columns in pipeline_inputs.csv. Skipping boxplot generation.")
-        return(invisible(NULL))
-      }
-      pipeline_inputs <- setNames(as.list(df$input), df$parameters)
-    }
+    # Retrieve pre-recorded inputs from the global pipeline_inputs.
+    pipeline_inputs <- get("pipeline_inputs", envir = .GlobalEnv)
     
     # Unified input helper.
     get_input_local <- function(param, prompt_msg, default_value = NULL,
@@ -71,23 +54,23 @@ generate_and_save_boxplots_with_excel_files <- function(input_data = get("pretre
     
     split_and_trim <- function(x) trimws(unlist(strsplit(x, ",")))
     
-    # Step 1: Ask whether to generate boxplots.
+    # Step 1: Ask whether to generate vibration boxplots.
     generate_boxplots <- get_input_local("generate_boxplots",
-                                         "❓ Do you want to generate boxplots? (yes/no): ",
+                                         "❓ Do you want to generate vibration boxplots? (yes/no): ",
                                          default_value = "yes",
                                          validate_fn = function(x) tolower(x) %in% c("yes", "y", "no", "n"),
                                          transform_fn = function(x) tolower(trimws(x)),
                                          error_msg = "❌ Please enter 'yes' or 'no'.")
     do_plot_generation <- generate_boxplots %in% c("yes", "y")
     if (!do_plot_generation) {
-      message("❌ Boxplot figure generation skipped. Proceeding with pairwise comparisons.")
+      message("❌ Vibration boxplot figure generation skipped. Proceeding with pairwise comparisons.")
     } else {
-      message("✔️ Proceeding with boxplot figure generation.")
+      message("✔️ Proceeding with vibration boxplot figure generation.")
     }
     
-    message("🔍 Validating input data structure for boxplots...")
+    message("🔍 Validating input data structure for vibration boxplots...")
     if (!"data.frame" %in% class(input_data)) {
-      message("❌ input_data must be a data frame. Skipping boxplot generation.")
+      message("❌ input_data must be a data frame. Skipping vibration boxplot generation.")
       return(invisible(NULL))
     }
     required_cols <- c("start_rounded", "zone", "condition", "condition_grouped")
@@ -95,10 +78,16 @@ generate_and_save_boxplots_with_excel_files <- function(input_data = get("pretre
       message("❌ input_data missing required columns: ", paste(required_cols, collapse = ", "), ". Skipping.")
       return(invisible(NULL))
     }
+    # Create a local copy and reinitialize factor columns consistently.
     boxplot_data <- input_data
+    boxplot_data$condition <- factor(as.character(boxplot_data$condition))
+    boxplot_data$condition_grouped <- factor(as.character(boxplot_data$condition_grouped))
+    if ("period_without_numbers" %in% colnames(boxplot_data)) {
+      boxplot_data$period_without_numbers <- factor(as.character(boxplot_data$period_without_numbers))
+    }
     message("✔️ Data structure validated.")
     
-    # Step 2: Remove acclimatation period if required.
+    # Step 3: Remove acclimatation period if required.
     keep_acclimatation <- get_input_local("keep_acclimatation",
                                           "❓ Keep the acclimatation period? (yes/no): ",
                                           default_value = "no",
@@ -112,7 +101,7 @@ generate_and_save_boxplots_with_excel_files <- function(input_data = get("pretre
       message("✔️ Acclimatation period retained.")
     }
     
-    # Step 3: Define output directories.
+    # Step 4: Define output directories.
     html_path <- file.path(output_dir, "html")
     png_path  <- file.path(output_dir, "png")
     jpg_path  <- file.path(output_dir, "jpg")
@@ -123,7 +112,7 @@ generate_and_save_boxplots_with_excel_files <- function(input_data = get("pretre
     dir.create(excel_path, recursive = TRUE, showWarnings = FALSE)
     message("✔️ Output directories created.")
     
-    # Step 4: Manage colors.
+    # Step 5: Manage colors.
     custom_color <- get_input_local("custom_color",
                                     "🎨 Enter custom colors for conditions (comma-separated), or press Enter for defaults: ",
                                     validate_fn = function(x) TRUE,
@@ -153,117 +142,107 @@ generate_and_save_boxplots_with_excel_files <- function(input_data = get("pretre
       message(sprintf("   - %s: %s", group, colors[group]))
     }
     
-    # Step 5: Define themes.
-    light_theme <- theme_bw() %+replace% theme(
-      plot.title = element_text(color = "black", size = 14, hjust = 0.5),
-      axis.text.y = element_text(color = "black", size = 12),
-      axis.text.x = element_text(color = "black", size = 12),
-      axis.title.x = element_text(color = "black", size = 12, margin = margin(t = 5, r = 15)),
-      axis.title.y = element_text(color = "black", size = 12, angle = 90, margin = margin(r = 10)),
-      legend.position = "right",
-      legend.text = element_text(color = "black", size = 12, face = "italic"),
-      legend.title = element_blank(),
-      strip.text.x = element_text(size = 12),
-      strip.background = element_rect(fill = "white"),
-      plot.caption = element_text(color = "black", size = 8, hjust = 1, margin = margin(t = 10))
-    )
-    dark_theme <- theme_bw() %+replace% theme(
-      plot.title = element_text(color = "white", size = 14, hjust = 0.5),
-      axis.text.y = element_text(color = "white", size = 12),
-      axis.text.x = element_text(color = "white", size = 12),
-      axis.title.x = element_text(color = "white", size = 12, margin = margin(t = 5, r = 15)),
-      axis.title.y = element_text(color = "white", size = 12, angle = 90, margin = margin(r = 10)),
-      legend.position = "right",
-      legend.text = element_text(color = "white", size = 12, face = "italic"),
-      legend.title = element_blank(),
-      legend.background = element_rect(fill = "black"),
-      legend.key = element_rect(fill = "black"),
-      strip.text.x = element_text(size = 12, color = "white"),
-      strip.background = element_rect(fill = "black", color = "white"),
-      plot.background = element_rect(fill = "black"),
-      panel.background = element_rect(fill = "black"),
-      panel.border = element_rect(color = "white", fill = NA),
-      panel.grid.major = element_line(color = "grey30"),
-      panel.grid.minor = element_line(color = "grey30"),
-      plot.caption = element_text(color = "white", size = 8, hjust = 1, margin = margin(t = 10))
-    )
+    # Step 6: Define themes.
+    light_theme <- function(base_size = 11, base_family = "") {
+      theme_bw() %+replace% theme(
+        plot.title = element_text(color = "black", size = 14, hjust = 0.5),
+        axis.text.y = element_text(color = "black", size = 12),
+        axis.text.x = element_text(color = "black", size = 12),
+        axis.title.x = element_text(color = "black", size = 12, margin = margin(t = 5, r = 15)),
+        axis.title.y = element_text(color = "black", size = 12, angle = 90, margin = margin(r = 10)),
+        legend.position = "right",
+        legend.text = element_text(color = "black", size = 12, face = "italic"),
+        legend.title = element_blank(),
+        strip.text.x = element_text(size = 12),
+        strip.background = element_rect(fill = "white"),
+        plot.caption = element_text(color = "black", size = 8, hjust = 1, margin = margin(t = 10))
+      )
+    }
+    dark_theme <- function(base_size = 11, base_family = "") {
+      theme_bw() %+replace% theme(
+        plot.title = element_text(color = "white", size = 14, hjust = 0.5),
+        axis.text.y = element_text(color = "white", size = 12),
+        axis.text.x = element_text(color = "white", size = 12),
+        axis.title.x = element_text(color = "white", size = 12, margin = margin(t = 5, r = 15)),
+        axis.title.y = element_text(color = "white", size = 12, angle = 90, margin = margin(r = 10)),
+        legend.position = "right",
+        legend.text = element_text(color = "white", size = 12, face = "italic"),
+        legend.title = element_blank(),
+        legend.background = element_rect(fill = "black"),
+        legend.key = element_rect(fill = "black"),
+        strip.text.x = element_text(size = 12, color = "white"),
+        strip.background = element_rect(fill = "black", color = "white"),
+        plot.background = element_rect(fill = "black"),
+        panel.background = element_rect(fill = "black"),
+        panel.border = element_rect(color = "white", fill = NA),
+        panel.grid.major = element_line(color = "grey30"),
+        panel.grid.minor = element_line(color = "grey30"),
+        plot.caption = element_text(color = "white", size = 8, hjust = 1, margin = margin(t = 10))
+      )
+    }
     
-    # Step 6: Prompt for output formats.
-    generate_delta_boxplots_html <- get_input_local("generate_delta_boxplots_html",
-                                                    "❓ Generate interactive HTML delta boxplots? (yes/no): ",
-                                                    validate_fn = function(x) tolower(x) %in% c("yes", "y", "no", "n"),
-                                                    transform_fn = function(x) tolower(trimws(x)),
-                                                    error_msg = "❌ Please enter 'yes' or 'no'.")
-    generate_delta_boxplots_png <- get_input_local("generate_delta_boxplots_png",
-                                                   "❓ Generate static PNG delta boxplots? (yes/no): ",
-                                                   validate_fn = function(x) tolower(x) %in% c("yes", "y", "no", "n"),
-                                                   transform_fn = function(x) tolower(trimws(x)),
-                                                   error_msg = "❌ Please enter 'yes' or 'no'.")
+    # Step 7: Ask for output formats.
+    generate_boxplots_html <- get_input_local("generate_boxplots_html",
+                                              "❓ Generate interactive HTML vibration boxplots? (yes/no): ",
+                                              default_value = "no",
+                                              validate_fn = function(x) tolower(x) %in% c("yes", "y", "no", "n"),
+                                              transform_fn = function(x) tolower(trimws(x)),
+                                              error_msg = "❌ Please enter 'yes' or 'no'.")
+    generate_boxplots_png <- get_input_local("generate_boxplots_png",
+                                             "❓ Generate static PNG vibration boxplots? (yes/no): ",
+                                             default_value = "yes",
+                                             validate_fn = function(x) tolower(x) %in% c("yes", "y", "no", "n"),
+                                             transform_fn = function(x) tolower(trimws(x)),
+                                             error_msg = "❌ Please enter 'yes' or 'no'.")
     
-    # Step 7: Generate delta boxplots if requested.
     if (do_plot_generation) {
-      message("⏳ Generating delta boxplots... This may take some time.")
-      boxplot_data$momentum <- factor(boxplot_data$momentum, levels = c("before", "switch", "after"))
+      message("⏳ Generating vibration boxplots... This may take a moment.")
       for (response_var in grep("^mean_", colnames(boxplot_data), value = TRUE)) {
         for (zone_number in unique(boxplot_data$zone)) {
-          zone_data <- boxplot_data %>% filter(zone == zone_number)
+          zone_data <- dplyr::filter(boxplot_data, zone == zone_number)
           for (theme_name in c("light", "dark")) {
             current_theme <- if (theme_name == "light") light_theme() else dark_theme()
-            plot <- tryCatch({
-              p <- ggplot(zone_data, aes(x = condition_grouped, y = .data[[response_var]], fill = momentum)) +
-                geom_boxplot(aes(group = interaction(condition_grouped, momentum)),
-                             outlier.shape = NA, alpha = 0.6, color = if (theme_name == "light") "black" else "white") +
-                geom_jitter(position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.75),
-                            alpha = 0.6, color = if (theme_name == "light") "black" else "white") +
-                labs(x = "Conditions", y = sprintf("%s (Zone %s)", response_var, zone_number), fill = "Momentum") +
-                current_theme +
-                scale_fill_manual(values = if (exists("custom_colors_global", envir = .GlobalEnv))
-                  get("custom_colors_global", envir = .GlobalEnv)
-                  else colors)
-              p
-            }, error = function(e) {
-              message("❌ Error creating plot for ", response_var, ", zone ", zone_number, ", theme ", theme_name, ": ", e$message)
-              return(NULL)
-            })
-            if (is.null(plot)) next
-            if (tolower(generate_delta_boxplots_png) %in% c("yes", "y")) {
-              tryCatch({
-                png_file <- file.path(png_path, sprintf("delta_boxplot_%s_zone_%s_%s.png", response_var, zone_number, theme_name))
-                ggsave(filename = png_file, plot = plot, width = 12, height = 9, dpi = 300)
-                message("✔️ PNG saved: ", png_file)
-              }, error = function(e) {
-                message("❌ Error saving PNG for ", response_var, ", zone ", zone_number, ", theme ", theme_name, ": ", e$message)
-              })
+            plot <- ggplot(zone_data, aes(x = condition_grouped, y = .data[[response_var]], fill = condition_grouped)) +
+              geom_boxplot(outlier.shape = NA, alpha = 0.6, color = if (theme_name == "light") "black" else "white") +
+              geom_jitter(position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.75),
+                          alpha = 0.6, color = if (theme_name == "light") "black" else "white") +
+              facet_wrap(~period_without_numbers, scales = "free_x") +
+              labs(x = "Conditions", y = sprintf("%s (Zone %s)", response_var, zone_number), fill = "Condition") +
+              current_theme +
+              scale_fill_manual(values = if (exists("custom_colors_global", envir = .GlobalEnv))
+                get("custom_colors_global", envir = .GlobalEnv) else colors)
+            
+            if (generate_boxplots_png %in% c("yes", "y")) {
+              png_file <- file.path(png_path, sprintf("boxplot_%s_zone_%s_%s.png", response_var, zone_number, theme_name))
+              ggsave(filename = png_file, plot = plot, width = 12, height = 9, dpi = 300)
+              message("✔️ PNG saved: ", png_file)
             }
-            if (tolower(generate_delta_boxplots_html) %in% c("yes", "y")) {
-              tryCatch({
-                html_file <- file.path(html_path, sprintf("delta_boxplot_%s_zone_%s_%s.html", response_var, zone_number, theme_name))
-                interactive_plot <- plotly::ggplotly(plot)
-                suppressMessages(htmlwidgets::saveWidget(interactive_plot, html_file, selfcontained = TRUE))
-                message("✔️ HTML saved: ", html_file)
-              }, error = function(e) {
-                message("❌ Error saving HTML for ", response_var, ", zone ", zone_number, ", theme ", theme_name, ": ", e$message)
-              })
+            if (generate_boxplots_html %in% c("yes", "y")) {
+              html_file <- file.path(html_path, sprintf("boxplot_%s_zone_%s_%s.html", response_var, zone_number, theme_name))
+              interactive_plot <- plotly::ggplotly(plot)
+              suppressMessages(htmlwidgets::saveWidget(interactive_plot, html_file, selfcontained = TRUE))
+              message("✔️ HTML saved: ", html_file)
             }
           }
         }
       }
-      message("🎉 Delta boxplots generated successfully!\n")
+      message("🎉 Vibration boxplots generated successfully!\n")
     } else {
-      message("❌ Delta boxplot generation skipped.")
+      message("❌ Vibration boxplot generation skipped.")
     }
     
     # Step 8: Generate pairwise percentage differences and write Excel file.
     percentage_diff_results <- list()
     for (response_var in grep("^mean_", colnames(boxplot_data), value = TRUE)) {
       message(sprintf("📊 Calculating percentage differences for %s...", response_var))
-      results <- boxplot_data %>% group_by(period_without_numbers, zone) %>% 
-        tidyr::nest() %>% mutate(
+      results <- boxplot_data %>% group_by(period_without_numbers, zone) %>%
+        tidyr::nest() %>%
+        dplyr::mutate(
           comparison_results = purrr::map(data, function(df) {
             condition_pairs <- combn(unique(df$condition_grouped), 2, simplify = FALSE)
             purrr::map_dfr(condition_pairs, function(pair) {
-              cond1 <- df %>% filter(condition_grouped == pair[1])
-              cond2 <- df %>% filter(condition_grouped == pair[2])
+              cond1 <- dplyr::filter(df, condition_grouped == pair[1])
+              cond2 <- dplyr::filter(df, condition_grouped == pair[2])
               if (nrow(cond1) > 0 && nrow(cond2) > 0) {
                 tibble(
                   condition_comparison = paste(pair[1], pair[2], sep = "-"),
@@ -286,7 +265,7 @@ generate_and_save_boxplots_with_excel_files <- function(input_data = get("pretre
       percentage_diff_results[[response_var]] <- results
     }
     
-    excel_file <- file.path(excel_output_dir, "delta_percentage_differences_pairwise.xlsx")
+    excel_file <- file.path(excel_output_dir, "percentage_differences_pairwise.xlsx")
     wb <- openxlsx::createWorkbook()
     for (response_var in names(percentage_diff_results)) {
       openxlsx::addWorksheet(wb, response_var)
@@ -311,12 +290,8 @@ generate_and_save_boxplots_with_excel_files <- function(input_data = get("pretre
       }
     }
     
-    tryCatch({
-      openxlsx::saveWorkbook(wb, excel_file, overwrite = TRUE)
-    }, error = function(e) {
-      message("❌ Error saving Excel workbook: ", e$message)
-    })
-    message(sprintf("🎉 Delta pairwise differences written to %s!\n", excel_file))
+    openxlsx::saveWorkbook(wb, excel_file, overwrite = TRUE)
+    message(sprintf("🎉 Pairwise differences saved to %s with conditional formatting!\n", excel_file))
     
   }, error = function(e) {
     message("❌ Error in generate_and_save_boxplots_with_excel_files: ", e$message)

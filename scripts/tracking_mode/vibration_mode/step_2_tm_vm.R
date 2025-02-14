@@ -19,25 +19,8 @@ extract_data <- function() {
   message("   • The file format is either '.csv' or '.xlsx'.")
   message("   • All Excel files are closed prior to extraction.\n")
   
-  # Load pre-recorded inputs.
-  pipeline_inputs <- list()
-  inputs_path <- "inputs/inputs_values"
-  inputs_file_xlsx <- file.path(inputs_path, "pipeline_inputs.xlsx")
-  inputs_file_csv  <- file.path(inputs_path, "pipeline_inputs.csv")
-  
-  if (file.exists(inputs_file_xlsx)) {
-    df <- readxl::read_excel(inputs_file_xlsx, sheet = 1)
-    if (!all(c("parameters", "input") %in% colnames(df))) {
-      stop("❌ The pipeline_inputs.xlsx file must contain columns 'parameters' and 'input'.")
-    }
-    pipeline_inputs <- setNames(as.list(df$input), df$parameters)
-  } else if (file.exists(inputs_file_csv)) {
-    df <- read.csv2(inputs_file_csv, sep = ";", dec = ".", header = TRUE, stringsAsFactors = FALSE)
-    if (!all(c("parameters", "input") %in% colnames(df))) {
-      stop("❌ The pipeline_inputs.csv file must contain columns 'parameters' and 'input'.")
-    }
-    pipeline_inputs <- setNames(as.list(df$input), df$parameters)
-  }
+  # Retrieve pre-recorded inputs from the global pipeline_inputs.
+  pipeline_inputs <- get("pipeline_inputs", envir = .GlobalEnv)
   
   # Unified helper to retrieve inputs.
   get_input_local <- function(param, prompt_msg, validate_fn = function(x) TRUE,
