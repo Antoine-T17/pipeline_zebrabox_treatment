@@ -121,13 +121,20 @@ generate_plate_plan <- function(plan_dir = "inputs/tracking_mode/light_dark_mode
     set.seed(seed_value)
     message("✔️ Seed value set to: ", seed_value)
     
-    plate_plan_name <- get_input_local("plate_plan_name",
-                                       "❓ Enter a file name for the plate plan (with .csv or .xlsx extension): ",
-                                       validate_fn = function(x) x != "" && grepl("\\.csv$|\\.xlsx$", x, ignore.case = TRUE),
-                                       transform_fn = function(x) trimws(x),
-                                       error_msg = "❌ Invalid file name. Must end with .csv or .xlsx.")
-    file_extension <- tolower(tools::file_ext(plate_plan_name))
+    # Prompt separately for CSV and Excel file names
+    plate_plan_name_csv <- get_input_local("plate_plan_name_csv",
+                                           "❓ Enter a file name for the plate plan CSV (with .csv extension): ",
+                                           validate_fn = function(x) x != "" && grepl("\\.csv$", x, ignore.case = TRUE),
+                                           transform_fn = function(x) trimws(x),
+                                           error_msg = "❌ Invalid CSV file name. Must end with .csv.")
     
+    plate_plan_name_xlsx <- get_input_local("plate_plan_name_xlsx",
+                                            "❓ Enter a file name for the plate plan Excel (with .xlsx extension): ",
+                                            validate_fn = function(x) x != "" && grepl("\\.xlsx$", x, ignore.case = TRUE),
+                                            transform_fn = function(x) trimws(x),
+                                            error_msg = "❌ Invalid Excel file name. Must end with .xlsx.")
+    
+    # Generate the plate plan data frame.
     wells <- with(expand.grid(Row = rows, Column = cols),
                   paste0(Row, sprintf("%02d", Column)))
     
@@ -146,6 +153,15 @@ generate_plate_plan <- function(plan_dir = "inputs/tracking_mode/light_dark_mode
       stringsAsFactors = FALSE
     )
     message("🎉 New plate plan created successfully!")
+    
+    # Save the plate plan in both formats.
+    csv_path <- file.path(plan_dir, plate_plan_name_csv)
+    write.csv2(plate_plan, file = csv_path, row.names = FALSE)
+    message("💾 Plate plan saved as CSV: ", csv_path)
+    
+    xlsx_path <- file.path(plan_dir, plate_plan_name_xlsx)
+    openxlsx::write.xlsx(plate_plan, file = xlsx_path, rowNames = FALSE)
+    message("💾 Plate plan saved as Excel file: ", xlsx_path)
     
   } else {
     # Existing plate plan branch.
@@ -178,19 +194,17 @@ generate_plate_plan <- function(plan_dir = "inputs/tracking_mode/light_dark_mode
       stop("❌ Plate plan is missing required columns: 'animal' and 'condition'.")
     }
     message("✔️ Plate plan loaded and validated successfully!")
-  }
-  
-  # Save the plate plan.
-  if (file_extension == "csv") {
-    csv_path <- file.path(plan_dir, plate_plan_name)
-    write.csv2(plate_plan, file = csv_path, row.names = FALSE)
-    message("💾 Plate plan saved as CSV: ", csv_path)
-  } else if (file_extension == "xlsx") {
-    xlsx_path <- file.path(plan_dir, plate_plan_name)
-    openxlsx::write.xlsx(plate_plan, file = xlsx_path, rowNames = FALSE)
-    message("💾 Plate plan saved as Excel file: ", xlsx_path)
-  } else {
-    stop("❌ Unsupported file extension.")
+    
+    # Save the loaded plate plan back to its original file.
+    if (file_extension == "csv") {
+      csv_path <- file.path(plan_dir, plate_plan_name)
+      write.csv2(plate_plan, file = csv_path, row.names = FALSE)
+      message("💾 Plate plan saved as CSV: ", csv_path)
+    } else if (file_extension == "xlsx") {
+      xlsx_path <- file.path(plan_dir, plate_plan_name)
+      openxlsx::write.xlsx(plate_plan, file = xlsx_path, rowNames = FALSE)
+      message("💾 Plate plan saved as Excel file: ", xlsx_path)
+    }
   }
   
   message("🎉 Plate plan generation completed!")

@@ -24,7 +24,7 @@ assign_periods_with_custom_durations <- function(enriched_data) {
   get_input_local <- function(param, prompt_msg, validate_fn = function(x) TRUE,
                               transform_fn = function(x) x,
                               error_msg = "❌ Invalid input. Please try again.") {
-    if (!is.null(pipeline_inputs[[param]]) && pipeline_inputs[[param]] != "") {
+    if (!is.null(pipeline_inputs[[param]]) && !is.na(pipeline_inputs[[param]]) && pipeline_inputs[[param]] != "") {
       candidate <- transform_fn(pipeline_inputs[[param]])
       if (validate_fn(candidate)) {
         message("💾 Using pre-recorded input for '", param, "': ", candidate)
