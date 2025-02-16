@@ -1,22 +1,22 @@
 # -----------------------------------------------------------
 # File: generate_and_save_lineplots.R
 # -----------------------------------------------------------
-# Harmonized version of the generate_and_save_lineplots function
-# adapted for vibration mode.
-# This function generates vibration plots from your pretreated data,
-# validates the data structure, manages colors and themes, and saves
-# plots in PNG and/or interactive HTML formats to specified directories.
+# Harmonized version of the generate_and_save_lineplots function for vibration mode.
+# This function generates line plots from the pretreated line plot data,
+# validates the data structure, manages colors and themes, and saves plots
+# in PNG and interactive HTML formats to specified directories.
+# Interactive HTML plots are first saved to a temporary directory and then moved to the final destination.
 # -----------------------------------------------------------
 
 generate_and_save_lineplots <- function(input_data = get("pretreated_data_for_lineplots_df", envir = .GlobalEnv),
                                         output_dir = "outputs/tracking_mode/vibration_mode/figures/lineplots") {
   tryCatch({
     message("\n---\n")
-    message("👋 Welcome to the Line Plot Generation Process!\n")
+    message("👋 Welcome to the Lineplot Generation Process!")
     message("📋 This function will help you:")
-    message("   • Generate high-quality vibration plots from your data.")
+    message("   • Generate high-quality line plots from your data.")
     message("   • Customize plot appearance using themes and colors.")
-    message("   • Save plots in PNG and/or interactive HTML formats.\n")
+    message("   • Save plots in PNG and interactive HTML formats.\n")
     
     # Retrieve pre-recorded inputs from the global pipeline_inputs.
     pipeline_inputs <- get("pipeline_inputs", envir = .GlobalEnv)
@@ -25,7 +25,8 @@ generate_and_save_lineplots <- function(input_data = get("pretreated_data_for_li
     get_input_local <- function(param, prompt_msg, validate_fn = function(x) TRUE,
                                 transform_fn = function(x) x,
                                 error_msg = "❌ Invalid input. Please try again.") {
-      if (!is.null(pipeline_inputs[[param]]) && pipeline_inputs[[param]] != "" && !is.na(pipeline_inputs[[param]])) {
+      if (!is.null(pipeline_inputs[[param]]) && pipeline_inputs[[param]] != "" &&
+          !is.na(pipeline_inputs[[param]])) {
         candidate <- transform_fn(as.character(pipeline_inputs[[param]]))
         if (validate_fn(candidate)) {
           message("💾 Using pre-recorded input for '", param, "': ", candidate)
@@ -50,37 +51,37 @@ generate_and_save_lineplots <- function(input_data = get("pretreated_data_for_li
     
     split_and_trim <- function(x) trimws(unlist(strsplit(x, ",")))
     
-    # Step 0: Ask whether to generate vibration plots.
+    # Step 0: Ask whether to generate line plots.
     generate_lines_plots <- get_input_local("generate_lines_plots",
-                                            "❓ Do you want to generate vibration plots? (yes/no): ",
+                                            "❓ Do you want to generate line plots? (yes/no): ",
                                             validate_fn = function(x) tolower(x) %in% c("yes", "y", "no", "n"),
                                             transform_fn = function(x) tolower(trimws(x)),
                                             error_msg = "❌ Please enter 'yes' or 'no'.")
     if (generate_lines_plots %in% c("no", "n")) {
-      message("❌ Vibration plot generation skipped as per user input.")
+      message("❌ Lineplot generation skipped as per user input.")
       return(invisible(NULL))
     }
     
     # Step 0.5: Ask for output formats.
     generate_lines_plots_html <- get_input_local("generate_lines_plots_html",
-                                                 "❓ Generate interactive HTML vibration plots? (yes/no): ",
+                                                 "❓ Generate interactive HTML line plots? (yes/no): ",
                                                  validate_fn = function(x) tolower(x) %in% c("yes", "y", "no", "n"),
                                                  transform_fn = function(x) tolower(trimws(x)),
                                                  error_msg = "❌ Please enter 'yes' or 'no'.")
     generate_lines_plots_png <- get_input_local("generate_lines_plots_png",
-                                                "❓ Generate static PNG vibration plots? (yes/no): ",
+                                                "❓ Generate static PNG line plots? (yes/no): ",
                                                 validate_fn = function(x) tolower(x) %in% c("yes", "y", "no", "n"),
                                                 transform_fn = function(x) tolower(trimws(x)),
                                                 error_msg = "❌ Please enter 'yes' or 'no'.")
     
     if (generate_lines_plots_html %in% c("no", "n") && generate_lines_plots_png %in% c("no", "n")) {
-      message("❌ No output format selected. Skipping vibration plot generation.")
+      message("❌ No output format selected. Skipping lineplot generation.")
       return(invisible(NULL))
     }
     
     message("🔍 Validating input data structure...")
     if (!inherits(input_data, "data.frame")) {
-      message("❌ input_data must be a data frame. Skipping vibration plot generation.")
+      message("❌ input_data must be a data frame. Skipping lineplot generation.")
       return(invisible(NULL))
     }
     required_columns <- c("start_rounded", "zone", "condition", "condition_grouped")
@@ -113,11 +114,11 @@ generate_and_save_lineplots <- function(input_data = get("pretreated_data_for_li
     }
     
     # Step 2: Define output directories.
-    png_path  <- file.path(output_dir, "png")
-    html_path <- file.path(output_dir, "html")
-    dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
-    dir.create(png_path, recursive = TRUE, showWarnings = FALSE)
-    dir.create(html_path, recursive = TRUE, showWarnings = FALSE)
+    message("📁 Creating output directories for line boxplots...")
+    html_dir <- "outputs/tracking_mode/vibration_mode/figures/lineplots/html"
+    png_dir  <- file.path(output_dir, "png")
+    temp_dir <- tempdir()  # Use system temporary directory (short path)
+    dir.create(png_dir, recursive = TRUE, showWarnings = FALSE)
     message("✔️ Output directories created.")
     
     # Step 3: Manage colors.
@@ -186,8 +187,8 @@ generate_and_save_lineplots <- function(input_data = get("pretreated_data_for_li
       legend.title = element_blank(),
       legend.background = element_rect(fill = "black"),
       legend.key = element_rect(fill = "black"),
-      strip.text.x = element_text(size = 12, color = "white"),
-      strip.background = element_rect(fill = "black", color = "black"),
+      strip.text.x = element_text(color = "white", size = 12),
+      strip.background = element_rect(fill = "black", color = "white"),
       plot.background = element_rect(fill = "black"),
       panel.background = element_rect(fill = "black"),
       panel.border = element_rect(color = "white", fill = NA),
@@ -196,9 +197,21 @@ generate_and_save_lineplots <- function(input_data = get("pretreated_data_for_li
       plot.caption = element_text(color = "white", size = 8, hjust = 1, margin = margin(t = 10))
     )
     
-    # Step 4: Generate vibration plots.
+    # Step 7: Prompt for output formats.
+    generate_lines_plots_html <- get_input_local("generate_lines_plots_html",
+                                                 "❓ Generate interactive HTML line plots? (yes/no): ",
+                                                 validate_fn = function(x) tolower(x) %in% c("yes", "y", "no", "n"),
+                                                 transform_fn = function(x) tolower(trimws(x)),
+                                                 error_msg = "❌ Please enter 'yes' or 'no'.")
+    generate_lines_plots_png <- get_input_local("generate_lines_plots_png",
+                                                "❓ Generate static PNG line plots? (yes/no): ",
+                                                validate_fn = function(x) tolower(x) %in% c("yes", "y", "no", "n"),
+                                                transform_fn = function(x) tolower(trimws(x)),
+                                                error_msg = "❌ Please enter 'yes' or 'no'.")
+    
+    # Step 8: Generate line plots.
     response_vars <- grep("^sum_", colnames(input_data), value = TRUE)
-    message("⏳ Generating vibration plots... This may take a moment.")
+    message("⏳ Generating line plots... This may take a moment.")
     for (response_var in response_vars) {
       for (zone_number in unique(input_data$zone)) {
         zone_data <- dplyr::filter(input_data, zone == zone_number)
@@ -216,21 +229,31 @@ generate_and_save_lineplots <- function(input_data = get("pretreated_data_for_li
             labs(x = "Time (minutes)", y = sprintf("%s (Zone %s)", response_var, zone_number)) +
             current_theme
           
-          if (generate_lines_plots_png %in% c("yes", "y")) {
-            png_file <- file.path(png_path, sprintf("plot_%s_zone_%s_%s.png", response_var, zone_number, theme_name))
-            ggsave(filename = png_file, plot = p, width = 12, height = 9, dpi = 300)
-            message("✔️ PNG saved: ", png_file)
+          if (tolower(generate_lines_plots_png) %in% c("yes", "y")) {
+            tryCatch({
+              png_file <- file.path(png_dir, sprintf("plot_%s_zone_%s_%s.png", response_var, zone_number, theme_name))
+              ggsave(filename = png_file, plot = p, width = 12, height = 9, dpi = 300)
+              message("✔️ PNG saved: ", png_file)
+            }, error = function(e) {
+              message("❌ Error saving PNG for ", response_var, ", zone ", zone_number, ", theme ", theme_name, ": ", e$message)
+            })
           }
-          if (generate_lines_plots_html %in% c("yes", "y")) {
-            interactive_plot <- plotly::ggplotly(p)
-            html_file <- file.path(html_path, sprintf("plot_%s_zone_%s_%s.html", response_var, zone_number, theme_name))
-            htmlwidgets::saveWidget(interactive_plot, html_file, selfcontained = TRUE)
-            message("✔️ HTML saved: ", html_file)
+          if (tolower(generate_lines_plots_html) %in% c("yes", "y")) {
+            tryCatch({
+              temp_html <- file.path(temp_dir, sprintf("plot_%s_zone_%s_%s.html", response_var, zone_number, theme_name))
+              final_html <- file.path(html_dir, sprintf("plot_%s_zone_%s_%s.html", response_var, zone_number, theme_name))
+              suppressWarnings(saveWidget(plotly::ggplotly(p) %>% layout(boxmode = "group"), temp_html, selfcontained = TRUE))
+              file.copy(temp_html, final_html, overwrite = TRUE)
+              file.remove(temp_html)
+              message("✔️ HTML saved: ", final_html)
+            }, error = function(e) {
+              message("❌ Error saving HTML for ", response_var, ", zone ", zone_number, ", theme ", theme_name, ": ", e$message)
+            })
           }
         }
       }
     }
-    message("🎉 Vibration plot generation completed!\n")
+    message("🎉 Lineplot generation completed!\n")
     
   }, error = function(e) {
     message("❌ Error in generate_and_save_lineplots: ", e$message)

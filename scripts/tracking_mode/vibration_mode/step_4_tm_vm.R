@@ -1,11 +1,9 @@
 # -----------------------------------------------------------
 # File: assign_periods_with_custom_durations.R
-# -----------------------------------------------------------
-# Harmonized version of assign_periods_with_custom_durations for vibration_mode.
+# Harmonized version of assign_periods_with_custom_durations for vibration mode.
 # This function assigns experimental periods based on user-defined boundaries.
 # It prompts for the period sequence and boundaries, assigns periods accordingly,
-# creates an additional column stripping numeric tags (converting vibration/rest periods),
-# and saves the results globally.
+# creates an additional column stripping numeric tags, and saves the results globally.
 # -----------------------------------------------------------
 
 assign_periods_with_custom_durations <- function(enriched_data) {
@@ -24,7 +22,7 @@ assign_periods_with_custom_durations <- function(enriched_data) {
   get_input_local <- function(param, prompt_msg, validate_fn = function(x) TRUE,
                               transform_fn = function(x) x,
                               error_msg = "❌ Invalid input. Please try again.") {
-    if (!is.null(pipeline_inputs[[param]]) && pipeline_inputs[[param]] != "") {
+    if (!is.null(pipeline_inputs[[param]]) && !is.na(pipeline_inputs[[param]]) && pipeline_inputs[[param]] != "") {
       candidate <- transform_fn(pipeline_inputs[[param]])
       if (validate_fn(candidate)) {
         message("💾 Using pre-recorded input for '", param, "': ", candidate)
@@ -50,7 +48,7 @@ assign_periods_with_custom_durations <- function(enriched_data) {
   # Step 1: Define the sequence of periods.
   message("📋 Define your experimental period sequence (starting with 'acclimatation').")
   period_sequence_input <- get_input_local("period_sequence",
-                                           "❓ Enter the sequence of periods (comma-separated, e.g., acclimatation, vibration_1, rest_1,...): ",
+                                           "❓ Enter the sequence of periods (comma-separated, e.g., acclimatation, light_1, dark_1,...): ",
                                            validate_fn = function(x) {
                                              periods <- trimws(unlist(strsplit(as.character(x), ",")))
                                              length(periods) > 0 && ("acclimatation" %in% periods)
@@ -91,8 +89,8 @@ assign_periods_with_custom_durations <- function(enriched_data) {
   message("🛠️ Creating 'period_without_numbers' column...")
   enriched_data <- enriched_data %>% mutate(
     period_without_numbers = case_when(
-      str_detect(period_with_numbers, "^vibration") ~ "vibration",
-      str_detect(period_with_numbers, "^rest") ~ "rest",
+      str_detect(period_with_numbers, "^light") ~ "light",
+      str_detect(period_with_numbers, "^dark") ~ "dark",
       TRUE ~ period_with_numbers
     )
   )

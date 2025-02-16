@@ -1,11 +1,13 @@
 # -----------------------------------------------------------
 # File: generate_and_save_boxplots_with_excel_files.R
 # -----------------------------------------------------------
-# Harmonized version of the generate_and_save_boxplots_with_excel_files function
-# adapted for vibration mode.
-# This function generates vibration boxplots from the pretreated boxplot data,
-# validates the data structure, manages colors and themes, saves plots in PNG/HTML,
-# and writes pairwise percentage differences to an Excel file with conditional formatting.
+# Harmonized version of the generate_and_save_boxplots_with_excel_files function for vibration mode.
+# This function generates boxplots from the pretreated boxplot data,
+# validates the data structure, manages colors and themes, saves plots
+# in PNG and interactive HTML formats, and writes pairwise percentage 
+# differences to an Excel file with conditional formatting.
+# Interactive HTML plots are first saved to a temporary directory and then 
+# moved to the final destination.
 # -----------------------------------------------------------
 
 generate_and_save_boxplots_with_excel_files <- function(input_data = get("pretreated_data_for_boxplots_df", envir = .GlobalEnv),
@@ -13,11 +15,11 @@ generate_and_save_boxplots_with_excel_files <- function(input_data = get("pretre
                                                         excel_output_dir = "outputs/tracking_mode/vibration_mode/tables") {
   tryCatch({
     message("\n---\n")
-    message("👋 Welcome to the Vibration Boxplot Generation Process!\n")
+    message("👋 Welcome to the Boxplot Generation Process!")
     message("📋 This function will help you:")
-    message("   • Generate vibration boxplots for visualizing experimental data.")
+    message("   • Generate boxplots for visualizing experimental data.")
     message("   • Customize plots using themes and colors.")
-    message("   • Save plots in PNG and/or interactive HTML formats.")
+    message("   • Save plots in PNG and interactive HTML formats.")
     message("   • Write pairwise percentage differences to an Excel file.\n")
     
     # Retrieve pre-recorded inputs from the global pipeline_inputs.
@@ -54,23 +56,23 @@ generate_and_save_boxplots_with_excel_files <- function(input_data = get("pretre
     
     split_and_trim <- function(x) trimws(unlist(strsplit(x, ",")))
     
-    # Step 1: Ask whether to generate vibration boxplots.
+    # Step 1: Ask whether to generate boxplots.
     generate_boxplots <- get_input_local("generate_boxplots",
-                                         "❓ Do you want to generate vibration boxplots? (yes/no): ",
+                                         "❓ Do you want to generate boxplots? (yes/no): ",
                                          default_value = "yes",
                                          validate_fn = function(x) tolower(x) %in% c("yes", "y", "no", "n"),
                                          transform_fn = function(x) tolower(trimws(x)),
                                          error_msg = "❌ Please enter 'yes' or 'no'.")
     do_plot_generation <- generate_boxplots %in% c("yes", "y")
     if (!do_plot_generation) {
-      message("❌ Vibration boxplot figure generation skipped. Proceeding with pairwise comparisons.")
+      message("❌ Boxplot figure generation skipped. Proceeding with pairwise comparisons.")
     } else {
-      message("✔️ Proceeding with vibration boxplot figure generation.")
+      message("✔️ Proceeding with boxplot figure generation.")
     }
     
-    message("🔍 Validating input data structure for vibration boxplots...")
+    message("🔍 Validating input data structure for boxplots...")
     if (!"data.frame" %in% class(input_data)) {
-      message("❌ input_data must be a data frame. Skipping vibration boxplot generation.")
+      message("❌ input_data must be a data frame. Skipping boxplot generation.")
       return(invisible(NULL))
     }
     required_cols <- c("start_rounded", "zone", "condition", "condition_grouped")
@@ -78,13 +80,7 @@ generate_and_save_boxplots_with_excel_files <- function(input_data = get("pretre
       message("❌ input_data missing required columns: ", paste(required_cols, collapse = ", "), ". Skipping.")
       return(invisible(NULL))
     }
-    # Create a local copy and reinitialize factor columns consistently.
     boxplot_data <- input_data
-    boxplot_data$condition <- factor(as.character(boxplot_data$condition))
-    boxplot_data$condition_grouped <- factor(as.character(boxplot_data$condition_grouped))
-    if ("period_without_numbers" %in% colnames(boxplot_data)) {
-      boxplot_data$period_without_numbers <- factor(as.character(boxplot_data$period_without_numbers))
-    }
     message("✔️ Data structure validated.")
     
     # Step 3: Remove acclimatation period if required.
@@ -102,13 +98,11 @@ generate_and_save_boxplots_with_excel_files <- function(input_data = get("pretre
     }
     
     # Step 4: Define output directories.
-    html_path <- file.path(output_dir, "html")
-    png_path  <- file.path(output_dir, "png")
-    jpg_path  <- file.path(output_dir, "jpg")
+    html_dir <- file.path(output_dir, "html")
+    png_dir  <- file.path(output_dir, "png")
     excel_path <- file.path(excel_output_dir)
-    dir.create(html_path, recursive = TRUE, showWarnings = FALSE)
-    dir.create(png_path, recursive = TRUE, showWarnings = FALSE)
-    dir.create(jpg_path, recursive = TRUE, showWarnings = FALSE)
+    dir.create(html_dir, recursive = TRUE, showWarnings = FALSE)
+    dir.create(png_dir, recursive = TRUE, showWarnings = FALSE)
     dir.create(excel_path, recursive = TRUE, showWarnings = FALSE)
     message("✔️ Output directories created.")
     
@@ -142,70 +136,75 @@ generate_and_save_boxplots_with_excel_files <- function(input_data = get("pretre
       message(sprintf("   - %s: %s", group, colors[group]))
     }
     
-    # Step 6: Define themes.
-    light_theme <- function(base_size = 11, base_family = "") {
-      theme_bw() %+replace% theme(
-        plot.title = element_text(color = "black", size = 14, hjust = 0.5),
-        axis.text.y = element_text(color = "black", size = 12),
-        axis.text.x = element_text(color = "black", size = 12),
-        axis.title.x = element_text(color = "black", size = 12, margin = margin(t = 5, r = 15)),
-        axis.title.y = element_text(color = "black", size = 12, angle = 90, margin = margin(r = 10)),
-        legend.position = "right",
-        legend.text = element_text(color = "black", size = 12, face = "italic"),
-        legend.title = element_blank(),
-        strip.text.x = element_text(size = 12),
-        strip.background = element_rect(fill = "white"),
-        plot.caption = element_text(color = "black", size = 8, hjust = 1, margin = margin(t = 10))
-      )
-    }
-    dark_theme <- function(base_size = 11, base_family = "") {
-      theme_bw() %+replace% theme(
-        plot.title = element_text(color = "white", size = 14, hjust = 0.5),
-        axis.text.y = element_text(color = "white", size = 12),
-        axis.text.x = element_text(color = "white", size = 12),
-        axis.title.x = element_text(color = "white", size = 12, margin = margin(t = 5, r = 15)),
-        axis.title.y = element_text(color = "white", size = 12, angle = 90, margin = margin(r = 10)),
-        legend.position = "right",
-        legend.text = element_text(color = "white", size = 12, face = "italic"),
-        legend.title = element_blank(),
-        legend.background = element_rect(fill = "black"),
-        legend.key = element_rect(fill = "black"),
-        strip.text.x = element_text(size = 12, color = "white"),
-        strip.background = element_rect(fill = "black", color = "white"),
-        plot.background = element_rect(fill = "black"),
-        panel.background = element_rect(fill = "black"),
-        panel.border = element_rect(color = "white", fill = NA),
-        panel.grid.major = element_line(color = "grey30"),
-        panel.grid.minor = element_line(color = "grey30"),
-        plot.caption = element_text(color = "white", size = 8, hjust = 1, margin = margin(t = 10))
-      )
-    }
+    # Step 6: Define themes (as objects, not functions).
+    light_theme_obj <- theme_bw() %+replace% theme(
+      plot.title = element_text(color = "black", size = 14, hjust = 0.5),
+      axis.text.y = element_text(color = "black", size = 12),
+      axis.text.x = element_text(color = "black", size = 12),
+      axis.title.x = element_text(color = "black", size = 12, margin = margin(t = 5, r = 15)),
+      axis.title.y = element_text(color = "black", size = 12, angle = 90, margin = margin(r = 10)),
+      legend.position = "right",
+      legend.text = element_text(color = "black", size = 12, face = "italic"),
+      legend.title = element_blank(),
+      strip.text.x = element_text(size = 12),
+      strip.background = element_rect(fill = "white"),
+      plot.caption = element_text(color = "black", size = 8, hjust = 1, margin = margin(t = 10))
+    )
+    dark_theme_obj <- theme_bw() %+replace% theme(
+      plot.title = element_text(color = "white", size = 14, hjust = 0.5),
+      axis.text.y = element_text(color = "white", size = 12),
+      axis.text.x = element_text(color = "white", size = 12),
+      axis.title.x = element_text(color = "white", size = 12, margin = margin(t = 5, r = 15)),
+      axis.title.y = element_text(color = "white", size = 12, angle = 90, margin = margin(r = 10)),
+      legend.position = "right",
+      legend.text = element_text(color = "white", size = 12, face = "italic"),
+      legend.title = element_blank(),
+      legend.background = element_rect(fill = "black"),
+      legend.key = element_rect(fill = "black"),
+      strip.text.x = element_text(color = "white", size = 12),
+      strip.background = element_rect(fill = "black", color = "white"),
+      plot.background = element_rect(fill = "black"),
+      panel.background = element_rect(fill = "black"),
+      panel.border = element_rect(color = "white", fill = NA),
+      panel.grid.major = element_line(color = "grey30"),
+      panel.grid.minor = element_line(color = "grey30"),
+      plot.caption = element_text(color = "white", size = 8, hjust = 1, margin = margin(t = 10))
+    )
     
-    # Step 7: Ask for output formats.
+    # Step 7: Prompt for output formats.
     generate_boxplots_html <- get_input_local("generate_boxplots_html",
-                                              "❓ Generate interactive HTML vibration boxplots? (yes/no): ",
+                                              "❓ Generate interactive HTML boxplots? (yes/no): ",
                                               default_value = "no",
                                               validate_fn = function(x) tolower(x) %in% c("yes", "y", "no", "n"),
                                               transform_fn = function(x) tolower(trimws(x)),
                                               error_msg = "❌ Please enter 'yes' or 'no'.")
     generate_boxplots_png <- get_input_local("generate_boxplots_png",
-                                             "❓ Generate static PNG vibration boxplots? (yes/no): ",
+                                             "❓ Generate static PNG boxplots? (yes/no): ",
                                              default_value = "yes",
                                              validate_fn = function(x) tolower(x) %in% c("yes", "y", "no", "n"),
                                              transform_fn = function(x) tolower(trimws(x)),
                                              error_msg = "❌ Please enter 'yes' or 'no'.")
     
+    # Step 8: Generate boxplots.
     if (do_plot_generation) {
-      message("⏳ Generating vibration boxplots... This may take a moment.")
+      message("⏳ Generating boxplots... This may take a moment.")
       for (response_var in grep("^mean_", colnames(boxplot_data), value = TRUE)) {
         for (zone_number in unique(boxplot_data$zone)) {
           zone_data <- dplyr::filter(boxplot_data, zone == zone_number)
           for (theme_name in c("light", "dark")) {
-            current_theme <- if (theme_name == "light") light_theme() else dark_theme()
-            plot <- ggplot(zone_data, aes(x = condition_grouped, y = .data[[response_var]], fill = condition_grouped)) +
-              geom_boxplot(outlier.shape = NA, alpha = 0.6, color = if (theme_name == "light") "black" else "white") +
-              geom_jitter(position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.75),
-                          alpha = 0.6, color = if (theme_name == "light") "black" else "white") +
+            current_theme <- if (theme_name == "light") light_theme_obj else dark_theme_obj
+            plot <- ggplot(zone_data, aes(x = condition_grouped, 
+                                          y = .data[[response_var]], 
+                                          fill = condition_grouped,
+                                          text = paste("Condition Grouped:", condition_grouped,
+                                                       "<br>Condition Tagged:", condition_tagged,
+                                                       "<br>Animal:", animal,
+                                                       "<br>Response:", .data[[response_var]]))) +
+              geom_boxplot(outlier.shape = NA, alpha = 0.6,
+                           color = if (theme_name == "light") "black" else "white") +
+              geom_jitter(position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.2),
+                          alpha = 0.6,
+                          color = if (theme_name == "light") "black" else "white") +
               facet_wrap(~period_without_numbers, scales = "free_x") +
               labs(x = "Conditions", y = sprintf("%s (Zone %s)", response_var, zone_number), fill = "Condition") +
               current_theme +
@@ -213,31 +212,40 @@ generate_and_save_boxplots_with_excel_files <- function(input_data = get("pretre
                 get("custom_colors_global", envir = .GlobalEnv) else colors)
             
             if (generate_boxplots_png %in% c("yes", "y")) {
-              png_file <- file.path(png_path, sprintf("boxplot_%s_zone_%s_%s.png", response_var, zone_number, theme_name))
-              ggsave(filename = png_file, plot = plot, width = 12, height = 9, dpi = 300)
-              message("✔️ PNG saved: ", png_file)
+              tryCatch({
+                png_file <- file.path(png_dir, sprintf("boxplot_%s_zone_%s_%s.png", response_var, zone_number, theme_name))
+                ggsave(filename = png_file, plot = plot, width = 12, height = 9, dpi = 300)
+                message("✔️ PNG saved: ", png_file)
+              }, error = function(e) {
+                message("❌ Error saving PNG for ", response_var, ", zone ", zone_number, ", theme ", theme_name, ": ", e$message)
+              })
             }
             if (generate_boxplots_html %in% c("yes", "y")) {
-              html_file <- file.path(html_path, sprintf("boxplot_%s_zone_%s_%s.html", response_var, zone_number, theme_name))
-              interactive_plot <- plotly::ggplotly(plot)
-              suppressMessages(htmlwidgets::saveWidget(interactive_plot, html_file, selfcontained = TRUE))
-              message("✔️ HTML saved: ", html_file)
+              tryCatch({
+                temp_html <- file.path(tempdir(), sprintf("boxplot_%s_zone_%s_%s.html", response_var, zone_number, theme_name))
+                final_html <- file.path(html_dir, sprintf("boxplot_%s_zone_%s_%s.html", response_var, zone_number, theme_name))
+                suppressWarnings(saveWidget(plotly::ggplotly(plot, tooltip = "text"), temp_html, selfcontained = TRUE))
+                file.copy(temp_html, final_html, overwrite = TRUE)
+                file.remove(temp_html)
+                message("✔️ HTML saved: ", final_html)
+              }, error = function(e) {
+                message("❌ Error saving HTML for ", response_var, ", zone ", zone_number, ", theme ", theme_name, ": ", e$message)
+              })
             }
           }
         }
       }
-      message("🎉 Vibration boxplots generated successfully!\n")
+      message("🎉 Boxplots generated successfully!\n")
     } else {
-      message("❌ Vibration boxplot generation skipped.")
+      message("❌ Boxplot generation skipped.")
     }
     
-    # Step 8: Generate pairwise percentage differences and write Excel file.
+    # Step 9: Generate pairwise percentage differences and write Excel file.
     percentage_diff_results <- list()
     for (response_var in grep("^mean_", colnames(boxplot_data), value = TRUE)) {
       message(sprintf("📊 Calculating percentage differences for %s...", response_var))
-      results <- boxplot_data %>% group_by(period_without_numbers, zone) %>%
-        tidyr::nest() %>%
-        dplyr::mutate(
+      results <- boxplot_data %>% group_by(period_without_numbers, zone) %>% 
+        tidyr::nest() %>% dplyr::mutate(
           comparison_results = purrr::map(data, function(df) {
             condition_pairs <- combn(unique(df$condition_grouped), 2, simplify = FALSE)
             purrr::map_dfr(condition_pairs, function(pair) {
@@ -260,7 +268,7 @@ generate_and_save_boxplots_with_excel_files <- function(input_data = get("pretre
               }
             })
           })
-        ) %>% select(-data) %>% tidyr::unnest(comparison_results)
+        ) %>% dplyr::select(-data) %>% tidyr::unnest(comparison_results)
       
       percentage_diff_results[[response_var]] <- results
     }
