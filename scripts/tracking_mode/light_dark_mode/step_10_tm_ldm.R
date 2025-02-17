@@ -168,58 +168,71 @@ generate_and_save_boxplots_delta_with_excel_files <- function(input_data = get("
                                                  error_msg = "❌ Please enter 'yes' or 'no'.")
   
   # Step 8: Generate delta boxplots if requested.
-  # Ensure the factor levels are correct
-  
-  if (generate_delta_boxplots) {
+  if(generate_delta_boxplots){
     message("⏳ Generating delta boxplots... This may take some time.")
-    boxplot_data$momentum <- factor(boxplot_data$momentum, levels = c("before", "switch", "after"))
-    for (response_var in grep("^mean_", colnames(boxplot_data), value = TRUE)) {
-      for (zone_number in unique(boxplot_data$zone)) {
-        zone_data <- boxplot_data %>% filter(zone == zone_number)
-        for (theme_name in c("light", "dark")) {
-          current_theme <- if (theme_name == "light") light_theme() else dark_theme()
-          plot <- tryCatch({
-            p <- ggplot(zone_data, aes(x = condition_grouped, 
-                                       y = .data[[response_var]], 
-                                       fill = momentum,
-                                       text = paste("Condition Grouped:", condition_grouped,
-                                                    "<br>Condition Tagged:", condition_tagged,
-                                                    "<br>Animal:", animal,
-                                                    "<br>Response:", .data[[response_var]]))) +
+    boxplot_data$momentum <- factor(boxplot_data$momentum, levels=c("before","switch","after"))
+    for(response_var in grep("^mean_", colnames(boxplot_data), value=TRUE)){
+      for(zone_number in unique(boxplot_data$zone)){
+        zone_data <- boxplot_data %>% dplyr::filter(zone==zone_number)
+        for(theme_name in c("light","dark")){
+          current_theme <- if(theme_name=="light") light_theme() else dark_theme()
+          tryCatch({
+            p_png <- ggplot(zone_data, aes(x = condition_grouped, y = .data[[response_var]], group = momentum, fill = momentum)) +
               geom_boxplot(aes(group = interaction(condition_grouped, momentum)),
-                           position = position_dodge(width = 1,
-                                                     preserve = "total"),
-                           outlier.shape = NA, alpha = 0.6,
+                           position = position_dodge(width = 0.85),
+                           outlier.shape = NA,
+                           alpha = 0.6,
                            color = if (theme_name == "light") "black" else "white") +
-              geom_point(position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.6),
-                         size = 1.5, alpha = 0.6,
+              geom_point(shape = 21,
+                         position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.85),
+                         size = 1.75,
+                         alpha = 0.6,
                          color = if (theme_name == "light") "black" else "white") +
+              scale_fill_manual(values = colors) +
               labs(x = "Conditions", y = sprintf("%s (Zone %s)", response_var, zone_number), fill = "Momentum") +
               current_theme
             
-          }, error = function(e) {
+            p_html <- ggplot(zone_data, aes(x = condition_grouped, y = .data[[response_var]], group = momentum, fill = momentum,
+                                            text = paste("Condition Grouped:", condition_grouped, "<br>Condition Tagged:", condition_tagged,
+                                                         "<br>Animal:", animal, "<br>Response:", .data[[response_var]]))) +
+              geom_boxplot(aes(group = interaction(condition_grouped, momentum)),
+                           position = position_dodge(width = 0.75),
+                           outlier.shape = NA,
+                           alpha = 0.6,
+                           color = if (theme_name == "light") "black" else "white") +
+              geom_point(shape = 21,
+                         position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.75),
+                         size = 1.5,
+                         alpha = 0.6,
+                         color = if (theme_name == "light") "black" else "white") +
+              scale_fill_manual(values = colors) +
+              labs(x = "Conditions", y = sprintf("%s (Zone %s)", response_var, zone_number), fill = "Momentum") +
+              current_theme
+            
+
+          }, error=function(e){
             message("❌ Error creating plot for ", response_var, ", zone ", zone_number, ", theme ", theme_name, ": ", e$message)
             return(NULL)
           })
-          if (is.null(plot)) next
-          if (tolower(generate_delta_boxplots_png) %in% c("yes", "y")) {
+          if(is.null(p_png) || is.null(p_html)) next
+          if(tolower(generate_delta_boxplots_png) %in% c("yes","y")){
             tryCatch({
               png_file <- file.path(png_dir, sprintf("delta_boxplot_%s_zone_%s_%s.png", response_var, zone_number, theme_name))
-              ggsave(png_file, plot, width = 12, height = 9, dpi = 300)
+              ggsave(png_file, p_png, width=12, height=9, dpi=300)
               message("✔️ PNG saved: ", png_file)
-            }, error = function(e) {
+            }, error=function(e){
               message("❌ Error saving PNG for ", response_var, ", zone ", zone_number, ", theme ", theme_name, ": ", e$message)
             })
           }
-          if (tolower(generate_delta_boxplots_html) %in% c("yes", "y")) {
+          if(tolower(generate_delta_boxplots_html) %in% c("yes","y")){
             tryCatch({
               temp_html <- file.path(temp_dir, sprintf("delta_boxplot_%s_zone_%s_%s.html", response_var, zone_number, theme_name))
               final_html <- file.path(html_dir, sprintf("delta_boxplot_%s_zone_%s_%s.html", response_var, zone_number, theme_name))
-              suppressWarnings(saveWidget(ggplotly(plot, tooltip = "text") %>% layout(boxmode = "group"), temp_html, selfcontained = TRUE))
-              file.copy(temp_html, final_html, overwrite = TRUE)
+              suppressWarnings(htmlwidgets::saveWidget(plotly::ggplotly(p_html, tooltip="text") %>% plotly::layout(boxmode="group"), temp_html, selfcontained=TRUE))
+              file.copy(temp_html, final_html, overwrite=TRUE)
               file.remove(temp_html)
               message("✔️ HTML saved: ", final_html)
-            }, error = function(e) {
+            }, error=function(e){
               message("❌ Error saving HTML for ", response_var, ", zone ", zone_number, ", theme ", theme_name, ": ", e$message)
             })
           }
@@ -227,10 +240,9 @@ generate_and_save_boxplots_delta_with_excel_files <- function(input_data = get("
       }
     }
     message("🎉 Delta boxplots generated!")
-  } else {
+  }else{
     message("❌ Delta boxplot generation skipped.")
   }
-  
   
   # Step 9: Generate pairwise percentage differences and write Excel file.
   percentage_diff_results <- list()
