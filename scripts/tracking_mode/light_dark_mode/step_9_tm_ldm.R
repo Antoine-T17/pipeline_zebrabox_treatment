@@ -195,6 +195,7 @@ generate_and_save_boxplots_with_excel_files <- function(input_data = get("pretre
             current_theme <- if (theme_name == "light") light_theme_obj else dark_theme_obj
             plot <- ggplot(zone_data, aes(x = condition_grouped, 
                                           y = .data[[response_var]], 
+                                          group = condition_grouped,    # Explicit grouping added here
                                           fill = condition_grouped,
                                           text = paste("Condition Grouped:", condition_grouped,
                                                        "<br>Condition Tagged:", condition_tagged,
