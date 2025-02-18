@@ -8,6 +8,9 @@
 # Correction: The function computes durations from the provided boundaries and
 # enforces a minimum duration equal to the integration period (extracted from the 'period' column).
 # This ensures that very narrow periods (e.g. vibration_3) are expanded if necessary.
+# The computed boundaries are then snapped to the nearest multiple of the integration period.
+# In addition, the full period sequence is stored globally to ensure that downstream
+# functions (e.g., function 7) have access to all intended periods.
 # -----------------------------------------------------------
 
 assign_periods_with_custom_durations <- function(enriched_data) {
@@ -63,6 +66,9 @@ assign_periods_with_custom_durations <- function(enriched_data) {
   periods <- trimws(unlist(strsplit(period_sequence_input, ",")))
   message("✔️ Period sequence recorded: ", paste(periods, collapse = ", "))
   
+  # Save the full period sequence globally for downstream functions.
+  assign("all_periods", periods, envir = .GlobalEnv)
+  
   # Step 2: Define period boundaries (in seconds) for each transition.
   message("🛠️ Define period boundaries (time codes in seconds) for each transition.")
   boundaries_input <- get_input_local("period_boundaries",
@@ -71,7 +77,7 @@ assign_periods_with_custom_durations <- function(enriched_data) {
                                         boundaries <- as.numeric(trimws(unlist(strsplit(as.character(x), ","))))
                                         length(boundaries) == (length(periods) - 1) && all(!is.na(boundaries)) && all(boundaries > 0)
                                       },
-                                      transform_fn = function(x) as.numeric(trimws(unlist(strsplit(as.character(x), ",")))),
+                                      transform_fn = function(x) as.numeric(trimws(unlist(strsplit(as.character(x), ",")))) ,
                                       error_msg = sprintf("❌ Please enter %d positive numeric time codes separated by commas.", length(periods) - 1))
   message("✔️ Period boundaries recorded (in seconds): ", paste(boundaries_input, collapse = ", "))
   
@@ -96,14 +102,14 @@ assign_periods_with_custom_durations <- function(enriched_data) {
   # Enforce that each defined period (except the last) is at least as long as the integration period.
   durations[1:(length(periods) - 1)] <- pmax(durations[1:(length(periods) - 1)], integration_period)
   
-  # Debug: Show computed (adjusted) durations.
-  message("🔍 Debug: Computed durations for each period (in seconds):")
-  print(data.frame(Period = periods[1:(length(periods) - 1)], Duration = durations[1:(length(periods) - 1)]))
-  
   # Recompute boundaries using the adjusted durations.
   new_boundaries <- cumsum(durations[1:(length(periods) - 1)])  # in seconds
-  period_boundaries <- new_boundaries / 60  # convert to minutes for storage/consistency
-  message("✔️ Adjusted period boundaries (in minutes): ", paste(period_boundaries, collapse = ", "))
+  
+  # --- Snap boundaries to the nearest multiple of the integration period ---
+  snapped_boundaries <- round(new_boundaries / integration_period) * integration_period
+  # Convert snapped boundaries to minutes for storage/consistency.
+  period_boundaries <- snapped_boundaries / 60  
+  message("✔️ Adjusted (snapped) period boundaries (in minutes): ", paste(period_boundaries, collapse = ", "))
   
   # Create associations.
   period_transitions <- paste(periods[-length(periods)], periods[-1], sep = "-")
@@ -138,7 +144,7 @@ assign_periods_with_custom_durations <- function(enriched_data) {
   assign("data_with_periods_df", enriched_data, envir = .GlobalEnv)
   assign("period_boundaries", period_boundaries, envir = .GlobalEnv)
   message("🎉 Period assignment completed!")
-  message("💾 Results saved as 'data_with_periods_df', 'period_boundaries', and 'boundary_associations'.\n")
+  message("💾 Results saved as 'data_with_periods_df', 'period_boundaries', 'boundary_associations', and 'all_periods'.\n")
   
   return(enriched_data)
 }

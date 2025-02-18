@@ -31,7 +31,7 @@
 
 pre_visualization_data_treatment <- function(zone_combined_data) {
   message("\n---\n")
-  message("👋 Welcome to the Data Pretreatment Process!\n")
+  message("👋 Welcome to the Data Pretreatment Process (Light/Dark Mode)!\n")
   message("This pipeline will prepare data for visualization (lineplots and boxplots) ")
   message("and for delta analysis (delta boxplots pretreatment).\n")
   
@@ -50,9 +50,9 @@ pre_visualization_data_treatment <- function(zone_combined_data) {
       # Treat a single "no" (case-insensitive) as an empty vector.
       if (length(candidate) == 1 && tolower(candidate) == "no") candidate <- character(0)
       message("💾 Using pre-recorded input for '", param, "': ",
-              if(length(candidate)==0) "none" else paste(candidate, collapse = ", "))
+              if(length(candidate) == 0) "none" else paste(candidate, collapse = ", "))
       if (validate_fn(candidate)) {
-        input_record_list[[param]] <<- if(length(candidate)==0) "none" else paste(candidate, collapse = ", ")
+        input_record_list[[param]] <<- if(length(candidate) == 0) "none" else paste(candidate, collapse = ", ")
         return(candidate)
       } else {
         message("⚠️ Pre-recorded input for '", param, "' is invalid. Switching to interactive prompt.")
@@ -65,8 +65,8 @@ pre_visualization_data_treatment <- function(zone_combined_data) {
       if (length(candidate) == 1 && candidate == "") candidate <- character(0)
       if (validate_fn(candidate)) {
         message("✔️ Input for '", param, "' recorded: ",
-                if(length(candidate)==0) "none" else paste(candidate, collapse = ", "))
-        input_record_list[[param]] <<- if(length(candidate)==0) "none" else paste(candidate, collapse = ", ")
+                if(length(candidate) == 0) "none" else paste(candidate, collapse = ", "))
+        input_record_list[[param]] <<- if(length(candidate) == 0) "none" else paste(candidate, collapse = ", ")
         return(candidate)
       } else {
         message(error_msg)
@@ -107,7 +107,7 @@ pre_visualization_data_treatment <- function(zone_combined_data) {
   message("💾 Condition orders saved globally.")
   
   # Step 2: Remove specified conditions.
-  message("🧹 Removing specified conditions (if any)...")
+  message("\n🧹 Removing specified conditions (if any)...")
   remove_conditions <- get_input_local("remove_conditions",
                                        "❓ Enter condition(s) to remove (comma-separated) or type 'no' to keep all: ",
                                        validate_fn = function(x) TRUE,
@@ -121,12 +121,12 @@ pre_visualization_data_treatment <- function(zone_combined_data) {
       message("⚠️ No conditions were removed.")
     } else {
       message("✔️ Removing conditions: ", paste(remove_conditions, collapse = ", "))
-      zone_combined_data <- zone_combined_data %>% filter(!condition %in% remove_conditions)
+      zone_combined_data <- zone_combined_data %>% dplyr::filter(!condition %in% remove_conditions)
     }
   }
   
   # Step 3: Remove suspect wells.
-  message("🕵️ Removing suspect wells (if specified)...")
+  message("\n🕵️ Removing suspect wells (if specified)...")
   remove_suspect_well <- get_input_local("remove_suspect_well",
                                          "❓ Enter suspect wells to remove (comma-separated) or type 'no' to keep all: ",
                                          validate_fn = function(x) TRUE,
@@ -140,12 +140,12 @@ pre_visualization_data_treatment <- function(zone_combined_data) {
       message("⚠️ Skipping removal of suspect wells.")
     } else {
       message("✔️ Removing suspect wells: ", paste(remove_suspect_well, collapse = ", "))
-      zone_combined_data <- zone_combined_data %>% filter(!animal %in% remove_suspect_well)
+      zone_combined_data <- zone_combined_data %>% dplyr::filter(!animal %in% remove_suspect_well)
     }
   }
   
   # Step 4: Remove specified response variable columns.
-  message("🧹 Removing specified response variable columns (if any)...")
+  message("\n🧹 Removing specified response variable columns (if any)...")
   remove_variables <- get_input_local("remove_variables",
                                       "❓ Enter response variable column(s) to remove (comma-separated) or type 'no' to keep all: ",
                                       validate_fn = function(x) TRUE,
@@ -168,19 +168,19 @@ pre_visualization_data_treatment <- function(zone_combined_data) {
     vars_to_remove <- intersect(remove_variables, colnames(zone_combined_data))
     if (length(vars_to_remove) > 0) {
       message("✔️ Removing response variable columns: ", paste(vars_to_remove, collapse = ", "))
-      zone_combined_data <- zone_combined_data %>% select(-all_of(vars_to_remove))
+      zone_combined_data <- zone_combined_data %>% dplyr::select(-all_of(vars_to_remove))
     }
     response_vars <- setdiff(default_response_vars, vars_to_remove)
   }
   
   # Step 5: Calculate number of wells per condition and zone.
-  message("📊 Calculating well counts per condition and zone...")
+  message("\n📊 Calculating well counts per condition and zone...")
   specific_minute <- 1
   wells_per_condition <- zone_combined_data %>% 
-    filter(!is.na(start) & start == specific_minute) %>%
-    group_by(zone, condition) %>% 
-    summarise(n_wells = n_distinct(animal), .groups = "drop")
-  zone_combined_data <- zone_combined_data %>% left_join(wells_per_condition, by = c("zone", "condition"))
+    dplyr::filter(!is.na(start) & start == specific_minute) %>% 
+    dplyr::group_by(zone, condition) %>% 
+    dplyr::summarise(n_wells = dplyr::n_distinct(animal), .groups = "drop")
+  zone_combined_data <- zone_combined_data %>% dplyr::left_join(wells_per_condition, by = c("zone", "condition"))
   message("✔️ Well counts appended.")
   
   ## ===================== Part I – Pretreatment for Lineplots =====================
@@ -192,29 +192,35 @@ pre_visualization_data_treatment <- function(zone_combined_data) {
   message("✔️ Aggregation period set to ", aggregation_period, " seconds.")
   aggregation_period_minutes <- aggregation_period / 60
   zone_combined_data <- zone_combined_data %>% 
-    mutate(start_rounded = floor(start / aggregation_period_minutes) * aggregation_period_minutes)
+    dplyr::mutate(start_rounded = floor(start / aggregation_period_minutes) * aggregation_period_minutes)
   
   normalized_sums <- zone_combined_data %>% 
-    group_by(condition, period_with_numbers, zone, start_rounded) %>%
-    summarise(
-      animal = first(animal),
-      condition = first(condition),
-      condition_grouped = first(condition_grouped),
-      condition_tagged = first(condition_tagged),
-      period = first(period),
-      period_with_numbers = first(period_with_numbers),
-      period_without_numbers = first(period_without_numbers),
-      zone = first(zone),
-      n_wells = first(n_wells),
-      across(all_of(response_vars), ~sum(.x, na.rm = TRUE) / first(n_wells), .names = "sum_{.col}"),
+    dplyr::group_by(condition, period_with_numbers, zone, start_rounded) %>% 
+    dplyr::summarise(
+      animal = dplyr::first(animal),
+      condition = dplyr::first(condition),
+      condition_grouped = dplyr::first(condition_grouped),
+      condition_tagged = dplyr::first(condition_tagged),
+      period = dplyr::first(period),
+      period_with_numbers = dplyr::first(period_with_numbers),
+      period_without_numbers = dplyr::first(period_without_numbers),
+      zone = dplyr::first(zone),
+      n_wells = dplyr::first(n_wells),
+      dplyr::across(all_of(response_vars), ~sum(.x, na.rm = TRUE) / dplyr::first(n_wells), .names = "sum_{.col}"),
       .groups = "drop"
     )
   
   ## ===================== Part II – Pretreatment for Boxplots =====================
   message("\n📋 Preparing boxplot data (pretreatment for visualization)...")
-  available_periods <- unique(zone_combined_data$period_with_numbers)
+  # Use global full period sequence if it exists; otherwise fall back on the data.
+  if (exists("all_periods", envir = .GlobalEnv)) {
+    available_periods <- get("all_periods", envir = .GlobalEnv)
+  } else {
+    available_periods <- unique(zone_combined_data$period_with_numbers)
+  }
   message("ℹ️ Available periods: ", paste(available_periods, collapse = ", "))
   
+  # In light/dark mode, prompt for light and dark periods.
   light_period <- get_input_local("light_period",
                                   "❓ Enter light periods to include (comma-separated): ",
                                   validate_fn = function(x) {
@@ -235,21 +241,21 @@ pre_visualization_data_treatment <- function(zone_combined_data) {
                                  error_msg = "❌ Invalid dark periods. Please use available options.")
   message("✔️ Selected dark periods: ", paste(dark_period, collapse = ", "))
   
-  light_data <- zone_combined_data %>% filter(period_with_numbers %in% light_period)
-  dark_data  <- zone_combined_data %>% filter(period_with_numbers %in% dark_period)
+  light_data <- zone_combined_data %>% dplyr::filter(period_with_numbers %in% light_period)
+  dark_data  <- zone_combined_data %>% dplyr::filter(period_with_numbers %in% dark_period)
   
   calculate_means <- function(data) {
-    data %>% group_by(condition_tagged, period_without_numbers, zone) %>%
-      summarise(
-        start_rounded = first(start_rounded),
-        condition_grouped = first(condition_grouped),
-        animal = first(animal),
-        condition = first(condition),
-        period = first(period),
-        period_with_numbers = first(period_with_numbers),
-        period_without_numbers = first(period_without_numbers),
-        n_wells = first(n_wells),
-        across(all_of(response_vars), ~mean(.x, na.rm = TRUE), .names = "mean_{.col}"),
+    data %>% dplyr::group_by(condition_tagged, period_without_numbers, zone) %>%
+      dplyr::summarise(
+        start_rounded = dplyr::first(start_rounded),
+        condition_grouped = dplyr::first(condition_grouped),
+        animal = dplyr::first(animal),
+        condition = dplyr::first(condition),
+        period = dplyr::first(period),
+        period_with_numbers = dplyr::first(period_with_numbers),
+        period_without_numbers = dplyr::first(period_without_numbers),
+        n_wells = dplyr::first(n_wells),
+        dplyr::across(all_of(response_vars), ~mean(.x, na.rm = TRUE), .names = "mean_{.col}"),
         .groups = "drop"
       )
   }
@@ -266,24 +272,30 @@ pre_visualization_data_treatment <- function(zone_combined_data) {
     stop("❌ 'boundary_associations' not found. Define it before running this function.")
   }
   boundary_associations <- get("boundary_associations", envir = .GlobalEnv)
-  message("ℹ️ Available period boundaries and transitions:")
+  
+  # Print available boundaries using the rounded values.
+  message("ℹ️ Available period boundaries (rounded) and transitions:")
   message(paste0(apply(boundary_associations, 1, function(row) {
-    paste0("Boundary: ", row["boundary_time"], " (", row["transition"], ")")
+    paste0("Rounded Boundary: ", row["boundary_time"], " (", row["transition"], ")")
   }), collapse = "\n"))
   
+  # Use a tolerance (in minutes) for matching input boundaries to available ones.
+  tolerance <- 0.2
+  
+  # New validation: each provided value must be within tolerance of at least one available boundary.
   selected_boundaries <- get_input_local("selected_period_boundaries",
-                                         "❓ Enter one or more period boundaries (comma-separated): ",
+                                         "❓ Enter one or more period boundaries (choose from the rounded values above, comma-separated): ",
                                          validate_fn = function(x) {
-                                           # x should be a numeric vector
-                                           vals <- x
-                                           length(vals) > 0 && length(setdiff(vals, boundary_associations$boundary_time)) == 0
+                                           vals <- as.numeric(trimws(unlist(strsplit(as.character(x), ","))))
+                                           length(vals) > 0 &&
+                                             all(sapply(vals, function(v) {
+                                               any(abs(v - as.numeric(boundary_associations$boundary_time)) < tolerance)
+                                             }))
                                          },
                                          transform_fn = function(x) {
-                                           # If input is already numeric, return it; otherwise, convert from a comma-separated string.
-                                           if (is.numeric(x)) return(x)
                                            as.numeric(trimws(unlist(strsplit(as.character(x), ","))))
                                          },
-                                         error_msg = "❌ Invalid boundaries. Enter numeric values present in the list above."
+                                         error_msg = "❌ Invalid boundaries. Enter numeric values that match the rounded list (within tolerance)."
   )
   message("✔️ Selected boundaries: ", paste(selected_boundaries, collapse = ", "))
   
@@ -298,7 +310,6 @@ pre_visualization_data_treatment <- function(zone_combined_data) {
   )
   message("✔️ Delta value set to: ", delta_value)
   
-  # Validate that for each boundary, (n - delta) and (n + delta) exist.
   all_starts <- zone_combined_data$start
   for (boundary in selected_boundaries) {
     if (!((boundary - delta_value) %in% all_starts)) {
@@ -312,23 +323,23 @@ pre_visualization_data_treatment <- function(zone_combined_data) {
   message("🛠️ Filtering data for delta pretreatment...")
   filtered_delta <- data.frame()
   for (boundary in selected_boundaries) {
-    before_data <- zone_combined_data %>% filter(start == boundary - delta_value) %>% mutate(momentum = "before")
-    switch_data <- zone_combined_data %>% filter(start == boundary) %>% mutate(momentum = "switch")
-    after_data  <- zone_combined_data %>% filter(start == boundary + delta_value) %>% mutate(momentum = "after")
+    before_data <- zone_combined_data %>% dplyr::filter(start == boundary - delta_value) %>% dplyr::mutate(momentum = "before")
+    switch_data <- zone_combined_data %>% dplyr::filter(start == boundary) %>% dplyr::mutate(momentum = "switch")
+    after_data  <- zone_combined_data %>% dplyr::filter(start == boundary + delta_value) %>% dplyr::mutate(momentum = "after")
     filtered_delta <- dplyr::bind_rows(filtered_delta, before_data, switch_data, after_data)
   }
   
   calculate_delta_means <- function(data) {
-    data %>% group_by(condition_tagged, zone, momentum) %>%
-      summarise(
-        start = first(start),
-        condition_grouped = first(condition_grouped),
-        animal = first(animal),
-        condition = first(condition),
-        period = first(period),
-        period_with_numbers = first(period_with_numbers),
-        period_without_numbers = first(period_without_numbers),
-        across(all_of(response_vars), ~mean(.x, na.rm = TRUE), .names = "mean_{.col}"),
+    data %>% dplyr::group_by(condition_tagged, zone, momentum) %>%
+      dplyr::summarise(
+        start = dplyr::first(start),
+        condition_grouped = dplyr::first(condition_grouped),
+        animal = dplyr::first(animal),
+        condition = dplyr::first(condition),
+        period = dplyr::first(period),
+        period_with_numbers = dplyr::first(period_with_numbers),
+        period_without_numbers = dplyr::first(period_without_numbers),
+        dplyr::across(all_of(response_vars), ~mean(.x, na.rm = TRUE), .names = "mean_{.col}"),
         .groups = "drop"
       )
   }
