@@ -209,7 +209,7 @@ load_mode_scripts <- function(primary_mode, secondary_mode) {
   )
   
   base_path <- file.path("scripts", primary_mode, secondary_mode)
-  script_names <- paste0("step_", 1:12, "_", primary_abbrev, "_", secondary_abbrev, ".R")
+  script_names <- paste0("step_", 1:11, "_", primary_abbrev, "_", secondary_abbrev, ".R")
   script_paths <- file.path(base_path, script_names)
   
   lapply(script_paths, function(scr) {
@@ -252,7 +252,6 @@ run_full_pipeline <- function() {
   
   generate_and_save_lineplots()                                   
   generate_and_save_boxplots_with_excel_files()                   
-  prepare_delta_data_for_analysis()
   generate_and_save_boxplots_delta_with_excel_files()
   
   end_pipeline_message()

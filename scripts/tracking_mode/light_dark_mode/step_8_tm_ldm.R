@@ -1,17 +1,15 @@
 # -----------------------------------------------------------
-# File: generate_and_save_lineplots.R
+# primary mode : tracking mode
+# secondary mode : light_dark mode
+# Function: generate_and_save_lineplots
+# Purpose: Generates line plots from pretreated line plot data. It validates the data
+#          structure, manages colors and themes, and saves plots in both PNG and interactive
+#          HTML formats to specified directories. HTML plots are temporarily saved and then moved.
 # -----------------------------------------------------------
-# Harmonized version of the generate_and_save_lineplots function.
-# This function generates line plots from the pretreated line plot data,
-# validates the data structure, manages colors and themes, and saves plots
-# in PNG and interactive HTML formats to specified directories.
-# Interactive HTML plots are first saved to a temporary directory and then
-# moved to the final destination.
-# -----------------------------------------------------------
-
 generate_and_save_lineplots <- function(input_data = get("pretreated_data_for_lineplots_df", envir = .GlobalEnv),
                                         output_dir = "outputs/tracking_mode/light_dark_mode/figures/lineplots") {
   tryCatch({
+    # Step 1: Display welcome message.
     message("\n---\n")
     message("👋 Welcome to the Lineplot Generation Process!")
     message("📋 This function will help you:")
@@ -19,11 +17,11 @@ generate_and_save_lineplots <- function(input_data = get("pretreated_data_for_li
     message("   • Customize plot appearance using themes and colors.")
     message("   • Save plots in PNG and interactive HTML formats.\n")
     
-    # Retrieve pre-recorded inputs from the global pipeline_inputs.
+    # Step 2: Retrieve pre-recorded inputs and initialize the input record.
     pipeline_inputs <- get("pipeline_inputs", envir = .GlobalEnv)
     input_record_list <<- list()
     
-    # Unified input helper.
+    # Step 3: Define unified input helper.
     get_input_local <- function(param, prompt_msg, validate_fn = function(x) TRUE,
                                 transform_fn = function(x) x,
                                 error_msg = "❌ Invalid input. Please try again.") {
@@ -53,7 +51,7 @@ generate_and_save_lineplots <- function(input_data = get("pretreated_data_for_li
     
     split_and_trim <- function(x) trimws(unlist(strsplit(x, ",")))
     
-    # Step 0: Ask whether to generate line plots.
+    # Step 4: Ask whether to generate line plots.
     generate_lines_plots <- get_input_local("generate_lines_plots",
                                             "❓ Do you want to generate line plots? (yes/no): ",
                                             validate_fn = function(x) tolower(x) %in% c("yes", "y", "no", "n"),
@@ -64,7 +62,7 @@ generate_and_save_lineplots <- function(input_data = get("pretreated_data_for_li
       return(invisible(NULL))
     }
     
-    # Step 0.5: Ask for output formats.
+    # Step 4.5: Ask for desired output formats.
     generate_lines_plots_html <- get_input_local("generate_lines_plots_html",
                                                  "❓ Generate interactive HTML line plots? (yes/no): ",
                                                  validate_fn = function(x) tolower(x) %in% c("yes", "y", "no", "n"),
@@ -75,12 +73,12 @@ generate_and_save_lineplots <- function(input_data = get("pretreated_data_for_li
                                                 validate_fn = function(x) tolower(x) %in% c("yes", "y", "no", "n"),
                                                 transform_fn = function(x) tolower(trimws(x)),
                                                 error_msg = "❌ Please enter 'yes' or 'no'.")
-    
     if (generate_lines_plots_html %in% c("no", "n") && generate_lines_plots_png %in% c("no", "n")) {
       message("❌ No output format selected. Skipping lineplot generation.")
       return(invisible(NULL))
     }
     
+    # Step 5: Validate the input data structure.
     message("🔍 Validating input data structure...")
     if (!inherits(input_data, "data.frame")) {
       message("❌ input_data must be a data frame. Skipping lineplot generation.")
@@ -93,7 +91,7 @@ generate_and_save_lineplots <- function(input_data = get("pretreated_data_for_li
     }
     message("✔️ Data structure validated.")
     
-    # Order conditions.
+    # Step 6: Order conditions using global ordering if available.
     if (exists("generated_condition_order", envir = .GlobalEnv)) {
       message("✔️ Ordering conditions using 'generated_condition_order'.")
       input_data$condition <- factor(input_data$condition, levels = get("generated_condition_order", envir = .GlobalEnv))
@@ -102,7 +100,7 @@ generate_and_save_lineplots <- function(input_data = get("pretreated_data_for_li
       input_data$condition <- factor(input_data$condition, levels = unique(input_data$condition))
     }
     
-    # Step 1: Optionally remove acclimatation period.
+    # Step 7: Optionally remove acclimatation period.
     keep_acclimatation <- get_input_local("keep_acclimatation",
                                           "❓ Keep the acclimatation period? (yes/no): ",
                                           validate_fn = function(x) tolower(x) %in% c("yes", "y", "no", "n"),
@@ -115,7 +113,7 @@ generate_and_save_lineplots <- function(input_data = get("pretreated_data_for_li
       message("✔️ Acclimatation period retained.")
     }
     
-    # Step 2: Define output directories.
+    # Step 8: Define output directories.
     message("📁 Creating output directories for line plots...")
     html_dir <- file.path(output_dir, "html")
     png_dir  <- file.path(output_dir, "png")
@@ -124,13 +122,12 @@ generate_and_save_lineplots <- function(input_data = get("pretreated_data_for_li
     dir.create(html_dir, recursive = TRUE, showWarnings = FALSE)
     message("✔️ Output directories created.")
     
-    # Step 3: Manage colors.
+    # Step 9: Manage colors.
     message("🎨 Managing colors...")
     condition_groups <- unique(input_data$condition_grouped)
     default_colors <- rep(c("#FF6666", "#66B2FF", "#99CC33", "#FFCC33", "#CC66FF"),
                           length.out = length(condition_groups))
     names(default_colors) <- condition_groups
-    
     custom_color_input <- get_input_local("custom_color",
                                           "🎨 Enter custom colors for conditions (comma-separated), or press Enter for defaults: ",
                                           validate_fn = function(x) TRUE,
@@ -151,7 +148,6 @@ generate_and_save_lineplots <- function(input_data = get("pretreated_data_for_li
       custom_colors <- default_colors
       message("✔️ Using default colors: ", paste(custom_colors, collapse = ", "))
     }
-    
     generated_colors <- list()
     if (!exists("lighten", mode = "function")) {
       lighten <- function(color, factor = 0.4) { color }
@@ -166,7 +162,7 @@ generate_and_save_lineplots <- function(input_data = get("pretreated_data_for_li
     assign("generated_colors_global", generated_colors, envir = .GlobalEnv)
     message("✔️ Colors saved globally.")
     
-    # Step 4: Define themes as functions.
+    # Step 10: Define themes.
     light_theme <- function(base_size = 11, base_family = "") {
       theme_bw() %+replace% theme(
         plot.title = element_text(color = "black", size = 14, hjust = 0.5),
@@ -205,7 +201,7 @@ generate_and_save_lineplots <- function(input_data = get("pretreated_data_for_li
       )
     }
     
-    # Step 5: Prompt for output formats.
+    # Step 11: Prompt for desired output formats.
     generate_lines_plots_html <- get_input_local("generate_lines_plots_html",
                                                  "❓ Generate interactive HTML line plots? (yes/no): ",
                                                  validate_fn = function(x) tolower(x) %in% c("yes", "y", "no", "n"),
@@ -217,7 +213,7 @@ generate_and_save_lineplots <- function(input_data = get("pretreated_data_for_li
                                                 transform_fn = function(x) tolower(trimws(x)),
                                                 error_msg = "❌ Please enter 'yes' or 'no'.")
     
-    # Step 6: Generate line plots.
+    # Step 12: Generate line plots for each response variable and zone.
     response_vars <- grep("^sum_", colnames(input_data), value = TRUE)
     message("⏳ Generating line plots... This may take a moment.")
     for (response_var in response_vars) {
@@ -230,7 +226,7 @@ generate_and_save_lineplots <- function(input_data = get("pretreated_data_for_li
         for (theme_name in c("light", "dark")) {
           current_theme <- if (theme_name == "light") light_theme() else dark_theme()
           
-          # Generate static PNG version.
+          # Generate static PNG plot.
           p_png <- ggplot(zone_data, aes(x = start_rounded, y = .data[[response_var]], 
                                          color = condition, group = condition)) +
             geom_point(size = 2) +
@@ -240,20 +236,19 @@ generate_and_save_lineplots <- function(input_data = get("pretreated_data_for_li
             labs(x = "Time (minutes)", y = sprintf("%s (Zone %s)", response_var, zone_number)) +
             current_theme
           
-          # Generate interactive HTML version with tooltips.
+          # Generate interactive HTML plot.
           p_html <- ggplot(zone_data, aes(x = start_rounded, y = .data[[response_var]],
                                           text = paste("Time:", start_rounded,
                                                        "<br>Value:", .data[[response_var]],
                                                        "<br>Condition:", condition))) +
-            geom_point(aes(color = condition, group = condition),
-                       size = 2) +
+            geom_point(aes(color = condition, group = condition), size = 2) +
             geom_line(aes(color = condition, group = condition), linewidth = 0.8) +
             geom_vline(xintercept = period_boundaries, linetype = "dashed",
                        color = if (theme_name == "light") "black" else "white", alpha = 0.7) +
             labs(x = "Time (minutes)", y = sprintf("%s (Zone %s)", response_var, zone_number)) +
             current_theme
           
-          
+          # Save PNG if selected.
           if (tolower(generate_lines_plots_png) %in% c("yes", "y")) {
             tryCatch({
               png_file <- file.path(png_dir, sprintf("plot_%s_zone_%s_%s.png", response_var, zone_number, theme_name))
@@ -263,6 +258,7 @@ generate_and_save_lineplots <- function(input_data = get("pretreated_data_for_li
               message("❌ Error saving PNG for ", response_var, ", zone ", zone_number, ", theme ", theme_name, ": ", e$message)
             })
           }
+          # Save HTML if selected.
           if (tolower(generate_lines_plots_html) %in% c("yes", "y")) {
             tryCatch({
               temp_html <- file.path(temp_dir, sprintf("plot_%s_zone_%s_%s.html", response_var, zone_number, theme_name))

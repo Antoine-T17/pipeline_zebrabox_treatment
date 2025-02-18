@@ -1,16 +1,17 @@
 # -----------------------------------------------------------
-# File: generate_and_save_boxplots_delta_with_excel_files.R
+# primary mode : tracking mode
+# secondary mode : light dark mode
+# Function: generate_and_save_boxplots_delta_with_excel_files
+# Purpose: Generates delta boxplots from pretreated delta data, validates the data structure,
+#          orders condition groups, manages colors and themes, prompts for output formats,
+#          and writes pairwise percentage differences to an Excel file.
+#          HTML plots are first saved to a temporary directory (tempdir()) and then moved
+#          to the final destination.
 # -----------------------------------------------------------
-# Harmonized version of the generate_and_save_boxplots_delta_with_excel_files function for light dark mode.
-# This function generates delta boxplots from pretreated delta data,
-# validates data structure, orders conditions, manages colors and themes,
-# prompts for output formats, and writes pairwise percentage differences to an Excel file.
-# HTML plots are first saved in a temporary directory (tempdir()) and then moved to the final destination.
-# -----------------------------------------------------------
-
 generate_and_save_boxplots_delta_with_excel_files <- function(input_data = get("pretreated_delta_data_for_boxplots_df", envir = .GlobalEnv),
                                                               output_dir = "outputs/tracking_mode/light_dark_mode/figures/boxplots",
                                                               excel_output_dir = "outputs/tracking_mode/light_dark_mode/tables") {
+  # Step 1: Display welcome message.
   message("\n---\n")
   message("👋 Welcome to the Delta Boxplot Generation Process!")
   message("📋 This function will help you:")
@@ -19,10 +20,10 @@ generate_and_save_boxplots_delta_with_excel_files <- function(input_data = get("
   message("   • Save plots in PNG and interactive HTML formats.")
   message("   • Write pairwise percentage differences to an Excel file.\n")
   
-  # Retrieve pre-recorded inputs from the global pipeline_inputs.
+  # Step 2: Retrieve pre-recorded inputs from the global pipeline_inputs.
   pipeline_inputs <- get("pipeline_inputs", envir = .GlobalEnv)
   
-  # Unified input helper.
+  # Step 3: Define unified input helper.
   get_input_local <- function(param, prompt_msg, validate_fn = function(x) TRUE,
                               transform_fn = function(x) x,
                               error_msg = "❌ Invalid input. Please try again.") {
@@ -52,7 +53,7 @@ generate_and_save_boxplots_delta_with_excel_files <- function(input_data = get("
   
   split_and_trim <- function(x) trimws(unlist(strsplit(x, ",")))
   
-  # Step 1: Ask whether to generate delta boxplots.
+  # Step 4: Ask whether to generate delta boxplots.
   generate_delta_boxplots <- get_input_local("generate_delta_boxplots",
                                              "❓ Do you want to generate delta boxplots? (yes/no): ",
                                              validate_fn = function(x) tolower(x) %in% c("yes", "y", "no", "n"),
@@ -65,7 +66,7 @@ generate_and_save_boxplots_delta_with_excel_files <- function(input_data = get("
     message("❌ Delta boxplot generation skipped. The Excel file will still be generated.")
   }
   
-  # Step 2: Validate input data structure.
+  # Step 5: Validate input data structure.
   message("🔍 Validating delta input data structure...")
   if (!"data.frame" %in% class(input_data)) {
     stop("❌ input_data must be a data frame!")
@@ -76,7 +77,7 @@ generate_and_save_boxplots_delta_with_excel_files <- function(input_data = get("
   }
   boxplot_data <- input_data
   
-  # Step 3: Order conditions.
+  # Step 6: Order condition groups using global ordering.
   if (exists("generated_condition_grouped_order", envir = .GlobalEnv)) {
     message("✔️ Ordering condition groups using 'generated_condition_grouped_order'.")
     boxplot_data$condition_grouped <- factor(boxplot_data$condition_grouped,
@@ -85,7 +86,7 @@ generate_and_save_boxplots_delta_with_excel_files <- function(input_data = get("
     stop("❌ 'generated_condition_grouped_order' not found in global environment.")
   }
   
-  # Step 4: Define forced output directories.
+  # Step 7: Define forced output directories.
   message("📁 Creating output directories for delta boxplots...")
   html_dir <- "outputs/tracking_mode/light_dark_mode/figures/boxplots/html"
   png_dir  <- file.path(output_dir, "png")
@@ -95,7 +96,7 @@ generate_and_save_boxplots_delta_with_excel_files <- function(input_data = get("
   dir.create(excel_output_dir, recursive = TRUE, showWarnings = FALSE)
   message("✔️ Output directories created.")
   
-  # Step 5: Manage colors.
+  # Step 8: Manage custom colors for delta boxplots.
   switch_colors <- get_input_local("switch_colors",
                                    "🎨 Enter custom colors for delta boxplots (before, switch, after; comma-separated), or press Enter for defaults: ",
                                    validate_fn = function(x) TRUE,
@@ -114,9 +115,10 @@ generate_and_save_boxplots_delta_with_excel_files <- function(input_data = get("
     colors <- setNames(switch_colors, c("before", "switch", "after"))
     message("✔️ Custom delta colors set.")
   }
-  message("✔️ Delta colors: before: ", colors["before"], "; switch: ", colors["switch"], "; after: ", colors["after"])
+  message("✔️ Delta colors: before: ", colors["before"],
+          "; switch: ", colors["switch"], "; after: ", colors["after"])
   
-  # Step 6: Define themes.
+  # Step 9: Define themes for the plots.
   light_theme <- function(base_size = 11, base_family = "") {
     theme_bw() %+replace% theme(
       plot.title = element_text(color = "black", size = 14, hjust = 0.5),
@@ -144,7 +146,7 @@ generate_and_save_boxplots_delta_with_excel_files <- function(input_data = get("
       legend.title = element_blank(),
       legend.background = element_rect(fill = "black"),
       legend.key = element_rect(fill = "black"),
-      strip.text.x = element_text(size = 12, color = "white"),
+      strip.text.x = element_text(color = "white", size = 12),
       strip.background = element_rect(fill = "black", color = "white"),
       plot.background = element_rect(fill = "black"),
       panel.background = element_rect(fill = "black"),
@@ -155,7 +157,7 @@ generate_and_save_boxplots_delta_with_excel_files <- function(input_data = get("
     )
   }
   
-  # Step 7: Prompt for output formats.
+  # Step 10: Prompt for output formats.
   generate_delta_boxplots_html <- get_input_local("generate_delta_boxplots_html",
                                                   "❓ Generate interactive HTML delta boxplots? (yes/no): ",
                                                   validate_fn = function(x) tolower(x) %in% c("yes", "y", "no", "n"),
@@ -167,15 +169,16 @@ generate_and_save_boxplots_delta_with_excel_files <- function(input_data = get("
                                                  transform_fn = function(x) tolower(trimws(x)),
                                                  error_msg = "❌ Please enter 'yes' or 'no'.")
   
-  # Step 8: Generate delta boxplots if requested.
-  if(generate_delta_boxplots){
+  # Step 11: Generate delta boxplots.
+  if (generate_delta_boxplots) {
     message("⏳ Generating delta boxplots... This may take some time.")
-    boxplot_data$momentum <- factor(boxplot_data$momentum, levels=c("before","switch","after"))
-    for(response_var in grep("^mean_", colnames(boxplot_data), value=TRUE)){
-      for(zone_number in unique(boxplot_data$zone)){
-        zone_data <- boxplot_data %>% dplyr::filter(zone==zone_number)
-        for(theme_name in c("light","dark")){
-          current_theme <- if(theme_name=="light") light_theme() else dark_theme()
+    # Ensure momentum factor is ordered.
+    boxplot_data$momentum <- factor(boxplot_data$momentum, levels = c("before", "switch", "after"))
+    for (response_var in grep("^mean_", colnames(boxplot_data), value = TRUE)) {
+      for (zone_number in unique(boxplot_data$zone)) {
+        zone_data <- boxplot_data %>% dplyr::filter(zone == zone_number)
+        for (theme_name in c("light", "dark")) {
+          current_theme <- if (theme_name == "light") light_theme() else dark_theme()
           tryCatch({
             p_png <- ggplot(zone_data, aes(x = condition_grouped, y = .data[[response_var]], group = momentum, fill = momentum)) +
               geom_boxplot(aes(group = interaction(condition_grouped, momentum)),
@@ -193,8 +196,10 @@ generate_and_save_boxplots_delta_with_excel_files <- function(input_data = get("
               current_theme
             
             p_html <- ggplot(zone_data, aes(x = condition_grouped, y = .data[[response_var]], group = momentum, fill = momentum,
-                                            text = paste("Condition Grouped:", condition_grouped, "<br>Condition Tagged:", condition_tagged,
-                                                         "<br>Animal:", animal, "<br>Response:", .data[[response_var]]))) +
+                                            text = paste("Condition Grouped:", condition_grouped,
+                                                         "<br>Condition Tagged:", condition_tagged,
+                                                         "<br>Animal:", animal,
+                                                         "<br>Response:", .data[[response_var]]))) +
               geom_boxplot(aes(group = interaction(condition_grouped, momentum)),
                            position = position_dodge(width = 0.75),
                            outlier.shape = NA,
@@ -208,31 +213,29 @@ generate_and_save_boxplots_delta_with_excel_files <- function(input_data = get("
               scale_fill_manual(values = colors) +
               labs(x = "Conditions", y = sprintf("%s (Zone %s)", response_var, zone_number), fill = "Momentum") +
               current_theme
-            
-
-          }, error=function(e){
+          }, error = function(e) {
             message("❌ Error creating plot for ", response_var, ", zone ", zone_number, ", theme ", theme_name, ": ", e$message)
             return(NULL)
           })
-          if(is.null(p_png) || is.null(p_html)) next
-          if(tolower(generate_delta_boxplots_png) %in% c("yes","y")){
+          if (is.null(p_png) || is.null(p_html)) next
+          if (tolower(generate_delta_boxplots_png) %in% c("yes", "y")) {
             tryCatch({
               png_file <- file.path(png_dir, sprintf("delta_boxplot_%s_zone_%s_%s.png", response_var, zone_number, theme_name))
-              ggsave(png_file, p_png, width=12, height=9, dpi=300)
+              ggsave(png_file, p_png, width = 12, height = 9, dpi = 300)
               message("✔️ PNG saved: ", png_file)
-            }, error=function(e){
+            }, error = function(e) {
               message("❌ Error saving PNG for ", response_var, ", zone ", zone_number, ", theme ", theme_name, ": ", e$message)
             })
           }
-          if(tolower(generate_delta_boxplots_html) %in% c("yes","y")){
+          if (tolower(generate_delta_boxplots_html) %in% c("yes", "y")) {
             tryCatch({
               temp_html <- file.path(temp_dir, sprintf("delta_boxplot_%s_zone_%s_%s.html", response_var, zone_number, theme_name))
               final_html <- file.path(html_dir, sprintf("delta_boxplot_%s_zone_%s_%s.html", response_var, zone_number, theme_name))
-              suppressWarnings(htmlwidgets::saveWidget(plotly::ggplotly(p_html, tooltip="text") %>% plotly::layout(boxmode="group"), temp_html, selfcontained=TRUE))
-              file.copy(temp_html, final_html, overwrite=TRUE)
+              suppressWarnings(htmlwidgets::saveWidget(plotly::ggplotly(p_html, tooltip = "text") %>% plotly::layout(boxmode = "group"), temp_html, selfcontained = TRUE))
+              file.copy(temp_html, final_html, overwrite = TRUE)
               file.remove(temp_html)
               message("✔️ HTML saved: ", final_html)
-            }, error=function(e){
+            }, error = function(e) {
               message("❌ Error saving HTML for ", response_var, ", zone ", zone_number, ", theme ", theme_name, ": ", e$message)
             })
           }
@@ -240,23 +243,20 @@ generate_and_save_boxplots_delta_with_excel_files <- function(input_data = get("
       }
     }
     message("🎉 Delta boxplots generated!")
-  }else{
+  } else {
     message("❌ Delta boxplot generation skipped.")
   }
   
-  # Step 9: Generate pairwise percentage differences and write Excel file.
-  # -------------------------------
-  # Momentum Comparisons: Compare momentum phases for each condition and zone
-  # -------------------------------
+  # Step 12: Generate pairwise percentage differences (Momentum Comparisons).
+  message("📊 Calculating momentum percentage differences...")
   percentage_diff_results_momentum <- list()
   for (response_var in grep("^mean_", colnames(boxplot_data), value = TRUE)) {
-    message(sprintf("📊 Calculating momentum percentage differences for %s...", response_var))
     results_momentum <- boxplot_data %>% 
-      group_by(condition_grouped, zone) %>%  # Group by condition and zone
+      group_by(condition_grouped, zone) %>%  
       nest() %>% 
       mutate(
         comparison_results = map(data, function(df) {
-          # Define specific momentum comparisons: before-switch, switch-after, before-after
+          # Define momentum comparisons: before-switch, switch-after, before-after.
           momentum_pairs <- list(
             c("before", "switch"),
             c("switch", "after"),
@@ -284,55 +284,48 @@ generate_and_save_boxplots_delta_with_excel_files <- function(input_data = get("
         })
       ) %>% 
       select(-data) %>% 
-      unnest(comparison_results)
+      tidyr::unnest(comparison_results)
     
     percentage_diff_results_momentum[[response_var]] <- results_momentum
   }
   
-  # Write Momentum Comparisons Excel file
+  # Step 13: Write Momentum Comparisons Excel file.
   excel_file_momentum <- file.path(excel_output_dir, "delta_percentage_differences_momentum.xlsx")
-  wb_momentum <- createWorkbook()
+  wb_momentum <- openxlsx::createWorkbook()
   for (response_var in names(percentage_diff_results_momentum)) {
-    addWorksheet(wb_momentum, response_var)
-    writeData(wb_momentum, response_var, percentage_diff_results_momentum[[response_var]])
-    
-    # Apply conditional formatting for mean_diff_pct
+    openxlsx::addWorksheet(wb_momentum, response_var)
+    openxlsx::writeData(wb_momentum, response_var, percentage_diff_results_momentum[[response_var]])
     mean_diff_col <- which(names(percentage_diff_results_momentum[[response_var]]) == "mean_diff_pct")
-    if (length(mean_diff_col) > 0) {
-      conditionalFormatting(wb_momentum, sheet = response_var, cols = mean_diff_col,
-                            rows = 2:(nrow(percentage_diff_results_momentum[[response_var]]) + 1),
-                            rule = ">0", style = createStyle(bgFill = "#b9ffb2"))
-      conditionalFormatting(wb_momentum, sheet = response_var, cols = mean_diff_col,
-                            rows = 2:(nrow(percentage_diff_results_momentum[[response_var]]) + 1),
-                            rule = "<0", style = createStyle(bgFill = "#ffb2b2"))
-    }
-    
-    # Apply conditional formatting for median_diff_pct
     median_diff_col <- which(names(percentage_diff_results_momentum[[response_var]]) == "median_diff_pct")
+    if (length(mean_diff_col) > 0) {
+      openxlsx::conditionalFormatting(wb_momentum, sheet = response_var, cols = mean_diff_col,
+                                      rows = 2:(nrow(percentage_diff_results_momentum[[response_var]]) + 1),
+                                      rule = ">0", style = openxlsx::createStyle(bgFill = "#b9ffb2"))
+      openxlsx::conditionalFormatting(wb_momentum, sheet = response_var, cols = mean_diff_col,
+                                      rows = 2:(nrow(percentage_diff_results_momentum[[response_var]]) + 1),
+                                      rule = "<0", style = openxlsx::createStyle(bgFill = "#ffb2b2"))
+    }
     if (length(median_diff_col) > 0) {
-      conditionalFormatting(wb_momentum, sheet = response_var, cols = median_diff_col,
-                            rows = 2:(nrow(percentage_diff_results_momentum[[response_var]]) + 1),
-                            rule = ">0", style = createStyle(bgFill = "#b9ffb2"))
-      conditionalFormatting(wb_momentum, sheet = response_var, cols = median_diff_col,
-                            rows = 2:(nrow(percentage_diff_results_momentum[[response_var]]) + 1),
-                            rule = "<0", style = createStyle(bgFill = "#ffb2b2"))
+      openxlsx::conditionalFormatting(wb_momentum, sheet = response_var, cols = median_diff_col,
+                                      rows = 2:(nrow(percentage_diff_results_momentum[[response_var]]) + 1),
+                                      rule = ">0", style = openxlsx::createStyle(bgFill = "#b9ffb2"))
+      openxlsx::conditionalFormatting(wb_momentum, sheet = response_var, cols = median_diff_col,
+                                      rows = 2:(nrow(percentage_diff_results_momentum[[response_var]]) + 1),
+                                      rule = "<0", style = openxlsx::createStyle(bgFill = "#ffb2b2"))
     }
   }
   
   tryCatch({
-    saveWorkbook(wb_momentum, excel_file_momentum, overwrite = TRUE)
+    openxlsx::saveWorkbook(wb_momentum, excel_file_momentum, overwrite = TRUE)
   }, error = function(e) {
     message("❌ Error saving Momentum Excel workbook: ", e$message)
   })
   message(sprintf("🎉 Momentum delta pairwise differences written to %s!\n", excel_file_momentum))
   
-  
-  # -------------------------------
-  # Condition Comparisons: Original pairwise comparisons across conditions within each momentum and zone
-  # -------------------------------
+  # Step 14: Generate condition comparisons.
+  message("📊 Calculating condition percentage differences...")
   percentage_diff_results_condition <- list()
   for (response_var in grep("^mean_", colnames(boxplot_data), value = TRUE)) {
-    message(sprintf("📊 Calculating condition percentage differences for %s...", response_var))
     results_condition <- boxplot_data %>% 
       group_by(momentum, zone) %>% 
       nest() %>% 
@@ -354,50 +347,44 @@ generate_and_save_boxplots_delta_with_excel_files <- function(input_data = get("
                 median_diff_pct = round((median(cond2[[response_var]], na.rm = TRUE) - median(cond1[[response_var]], na.rm = TRUE)) /
                                           abs(median(cond1[[response_var]], na.rm = TRUE)) * 100, 2)
               )
-            } else {
-              tibble()
-            }
+            } else tibble()
           })
         })
       ) %>% 
       select(-data) %>% 
-      unnest(comparison_results)
+      tidyr::unnest(comparison_results)
     
     percentage_diff_results_condition[[response_var]] <- results_condition
   }
   
-  # Write Condition Comparisons Excel file
+  # Step 15: Write Condition Comparisons Excel file.
   excel_file_condition <- file.path(excel_output_dir, "delta_percentage_differences_condition.xlsx")
-  wb_condition <- createWorkbook()
+  wb_condition <- openxlsx::createWorkbook()
   for (response_var in names(percentage_diff_results_condition)) {
-    addWorksheet(wb_condition, response_var)
-    writeData(wb_condition, response_var, percentage_diff_results_condition[[response_var]])
-    
-    # Apply conditional formatting for mean_diff_pct
+    openxlsx::addWorksheet(wb_condition, response_var)
+    openxlsx::writeData(wb_condition, response_var, percentage_diff_results_condition[[response_var]])
     mean_diff_col <- which(names(percentage_diff_results_condition[[response_var]]) == "mean_diff_pct")
-    if (length(mean_diff_col) > 0) {
-      conditionalFormatting(wb_condition, sheet = response_var, cols = mean_diff_col,
-                            rows = 2:(nrow(percentage_diff_results_condition[[response_var]]) + 1),
-                            rule = ">0", style = createStyle(bgFill = "#b9ffb2"))
-      conditionalFormatting(wb_condition, sheet = response_var, cols = mean_diff_col,
-                            rows = 2:(nrow(percentage_diff_results_condition[[response_var]]) + 1),
-                            rule = "<0", style = createStyle(bgFill = "#ffb2b2"))
-    }
-    
-    # Apply conditional formatting for median_diff_pct
     median_diff_col <- which(names(percentage_diff_results_condition[[response_var]]) == "median_diff_pct")
+    if (length(mean_diff_col) > 0) {
+      openxlsx::conditionalFormatting(wb_condition, sheet = response_var, cols = mean_diff_col,
+                                      rows = 2:(nrow(percentage_diff_results_condition[[response_var]]) + 1),
+                                      rule = ">0", style = openxlsx::createStyle(bgFill = "#b9ffb2"))
+      openxlsx::conditionalFormatting(wb_condition, sheet = response_var, cols = mean_diff_col,
+                                      rows = 2:(nrow(percentage_diff_results_condition[[response_var]]) + 1),
+                                      rule = "<0", style = openxlsx::createStyle(bgFill = "#ffb2b2"))
+    }
     if (length(median_diff_col) > 0) {
-      conditionalFormatting(wb_condition, sheet = response_var, cols = median_diff_col,
-                            rows = 2:(nrow(percentage_diff_results_condition[[response_var]]) + 1),
-                            rule = ">0", style = createStyle(bgFill = "#b9ffb2"))
-      conditionalFormatting(wb_condition, sheet = response_var, cols = median_diff_col,
-                            rows = 2:(nrow(percentage_diff_results_condition[[response_var]]) + 1),
-                            rule = "<0", style = createStyle(bgFill = "#ffb2b2"))
+      openxlsx::conditionalFormatting(wb_condition, sheet = response_var, cols = median_diff_col,
+                                      rows = 2:(nrow(percentage_diff_results_condition[[response_var]]) + 1),
+                                      rule = ">0", style = openxlsx::createStyle(bgFill = "#b9ffb2"))
+      openxlsx::conditionalFormatting(wb_condition, sheet = response_var, cols = median_diff_col,
+                                      rows = 2:(nrow(percentage_diff_results_condition[[response_var]]) + 1),
+                                      rule = "<0", style = openxlsx::createStyle(bgFill = "#ffb2b2"))
     }
   }
   
   tryCatch({
-    saveWorkbook(wb_condition, excel_file_condition, overwrite = TRUE)
+    openxlsx::saveWorkbook(wb_condition, excel_file_condition, overwrite = TRUE)
   }, error = function(e) {
     message("❌ Error saving Condition Excel workbook: ", e$message)
   })

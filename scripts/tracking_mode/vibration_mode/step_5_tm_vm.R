@@ -1,33 +1,32 @@
 # -----------------------------------------------------------
-# File: process_zones.R
+# primary mode : tracking mode
+# secondary mode : vibration mode
+# Function: process_zones
+# Purpose: Processes experimental zones from enriched data.
+#          It displays zone definitions, optionally shows a visual schema,
+#          prompts for zone numbers, filters the data by zone, optionally
+#          calculates Zone 1 (if Zones 0 and 2 are present), and saves the
+#          processed data globally as 'zone_data_list'.
 # -----------------------------------------------------------
-# Harmonized version of the process_zones function for vibration mode.
-# Harmonized version of the process_zones function.
-# This function processes experimental zones from enriched data.
-# It displays zone definitions, optionally shows a visual schema,
-# prompts for zone numbers, filters the data per zone, optionally calculates Zone 1,
-# and saves the processed data globally as 'zone_data_list'.
-# -----------------------------------------------------------
-
 process_zones <- function(enriched_data) {
+  # Step 1: Display welcome message with bullet points and zone overview.
   message("\n---\n")
-  message("👋 Welcome to the Zone Processing Function!\n")
+  message("👋 Welcome to the Zone Processing Function!")
   message("📋 This function will help you:")
   message("   • Filter enriched data by user-specified zones.")
   message("   • Optionally display a visual representation of zones.")
   message("   • Optionally calculate Zone 1 if Zones 0 and 2 are present.")
   message("   • Save processed zone data globally as 'zone_data_list'.\n")
-  
   message("ℹ️ Zones overview:")
   message("   - Zone 0: Outermost zone.")
   message("   - Zone 1: Between Zone 0 and Zone 2 (if applicable).")
   message("   - Zone 2: Innermost zone.\n")
   message("ℹ️ See 'inputs/tracking_mode/vibration_mode/docs/schema_vibration_zones.jpg' for a visual schema.\n")
   
-  # Retrieve pre-recorded inputs from the global pipeline_inputs.
+  # Step 2: Retrieve pre-recorded inputs from the global pipeline_inputs.
   pipeline_inputs <- get("pipeline_inputs", envir = .GlobalEnv)
   
-  # Unified input helper.
+  # Step 3: Define helper function to obtain and validate user inputs.
   get_input_local <- function(param, prompt_msg, validate_fn = function(x) TRUE,
                               transform_fn = function(x) x,
                               error_msg = "❌ Invalid input. Please try again.") {
@@ -54,7 +53,7 @@ process_zones <- function(enriched_data) {
     }
   }
   
-  # Step 1: Optionally display zone visualization.
+  # Step 4: Optionally display the zone visualization image.
   zones_vizualisation <- get_input_local("zones_vizualisation",
                                          "❓ Do you need a visual representation of the zones? (yes/no): ",
                                          validate_fn = function(x) tolower(x) %in% c("yes", "y", "no", "n"),
@@ -74,7 +73,7 @@ process_zones <- function(enriched_data) {
     }
   }
   
-  # Step 2: Prompt for zone numbers.
+  # Step 5: Prompt for zone numbers.
   zones_input <- get_input_local("zones_number",
                                  "❓ Enter the zone numbers (comma-separated, e.g., 0,1,2): ",
                                  validate_fn = function(x) {
@@ -86,16 +85,17 @@ process_zones <- function(enriched_data) {
   zones <- zones_input
   message("✔️ Zones recorded: ", paste(zones, collapse = ", "))
   
+  # Step 6: Determine if Zone 1 should be calculated.
   calculate_zone_1 <- all(c(0, 2) %in% zones)
   
-  # Process each zone.
+  # Step 7: Process each specified zone by filtering the enriched data.
   zone_data <- list()
   for (zone in zones) {
     message(sprintf("🛠️ Processing Zone %d...", zone))
     zone_data[[as.character(zone)]] <- enriched_data %>% filter(an == zone)
   }
   
-  # Calculate Zone 1 if applicable.
+  # Step 8: Calculate Zone 1 if Zones 0 and 2 are present.
   if (calculate_zone_1) {
     message("🧮 Calculating Zone 1 by subtracting Zone 2 from Zone 0...")
     numeric_columns <- c("inact", "inadur", "inadist", "smlct", "smldist", "smldur", 
@@ -115,6 +115,7 @@ process_zones <- function(enriched_data) {
     message("⚠️ Zone 1 will not be calculated (not all required zones present).")
   }
   
+  # Step 9: Save the processed zone data globally and return it.
   message("🎉 Zone data processed.")
   message("💾 Zone data saved globally as 'zone_data_list'.\n")
   assign("zone_data_list", zone_data, envir = .GlobalEnv)

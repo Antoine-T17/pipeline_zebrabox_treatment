@@ -1,27 +1,27 @@
 # -----------------------------------------------------------
-# File: import_and_process_data.R
+# primary mode : tracking mode
+# secondary mode : vibration mode
+# Function: import_and_process_data
+# Purpose: Enriches experimental data using a plate plan by matching wells,
+#          and, if needed, generating additional grouping/tagging columns.
+#          The enriched data is saved globally as 'enriched_data_df'.
 # -----------------------------------------------------------
-# Harmonized version of the import_and_process_data function for vibration mode.
-# Harmonized version of the import_and_process_data function.
-# This function enriches experimental data using a plate plan by matching wells,
-# and if needed, generating additional grouping/tagging columns.
-# The enriched data is saved globally as 'enriched_data_df'.
-# -----------------------------------------------------------
-
 import_and_process_data <- function(data, plate_plan) {
+  # Step 1: Load necessary libraries quietly
   suppressWarnings(suppressPackageStartupMessages({
     library(dplyr)
     library(stringr)
   }))
   
+  # Step 2: Display welcome message with bullet points
   message("\n---\n")
-  message("👋 Welcome to the Data Enrichment Process!\n")
+  message("👋 Welcome to the Data Enrichment Process!")
   message("📋 This function will help you:")
   message("   • Match experimental wells (from the 'animal' column) with their conditions.")
   message("   • Generate 'condition_grouped' and 'condition_tagged' columns if missing.")
   message("   • Save the enriched data globally as 'enriched_data_df'.\n")
   
-  # Validate plate plan.
+  # Step 3: Validate the plate plan contains required columns
   message("🔍 Validating the plate plan...")
   required_columns <- c("animal", "condition")
   missing_cols <- setdiff(required_columns, colnames(plate_plan))
@@ -30,7 +30,7 @@ import_and_process_data <- function(data, plate_plan) {
   }
   message("✔️ Plate plan validation successful.")
   
-  # Enrich experimental data.
+  # Step 4: Match experimental wells with plate plan conditions
   message("🛠️ Matching experimental wells with plate plan conditions...")
   data$condition <- sapply(data$animal, function(animal_id) {
     value <- plate_plan$condition[plate_plan$animal == animal_id]
@@ -38,7 +38,7 @@ import_and_process_data <- function(data, plate_plan) {
   })
   message("✔️ Conditions successfully matched.")
   
-  # Generate condition_grouped if missing.
+  # Step 5: Generate 'condition_grouped' if missing in the plate plan
   if (!"condition_grouped" %in% colnames(plate_plan)) {
     message("🛠️ Generating 'condition_grouped' from 'condition'...")
     plate_plan$condition_grouped <- sapply(plate_plan$condition, function(cond) {
@@ -47,7 +47,7 @@ import_and_process_data <- function(data, plate_plan) {
     message("✔️ 'condition_grouped' generated.")
   }
   
-  # Generate condition_tagged if missing.
+  # Step 6: Generate 'condition_tagged' if missing in the plate plan
   if (!"condition_tagged" %in% colnames(plate_plan)) {
     message("🛠️ Generating 'condition_tagged' based on 'condition_grouped'...")
     plate_plan <- plate_plan %>% 
@@ -57,7 +57,7 @@ import_and_process_data <- function(data, plate_plan) {
     message("✔️ 'condition_tagged' generated.")
   }
   
-  # Append the new columns to data.
+  # Step 7: Append new columns to experimental data
   message("🛠️ Appending 'condition_grouped' and 'condition_tagged' to experimental data...")
   data$condition_grouped <- sapply(data$animal, function(animal_id) {
     value <- plate_plan$condition_grouped[plate_plan$animal == animal_id]
@@ -68,6 +68,7 @@ import_and_process_data <- function(data, plate_plan) {
     if (length(value) == 0) NA else value
   })
   
+  # Step 8: Finalize enrichment, save globally, and return enriched data
   message("🎉 Data enrichment completed!")
   message("💾 Enriched data saved globally as 'enriched_data_df'.\n")
   assign("enriched_data_df", data, envir = .GlobalEnv)

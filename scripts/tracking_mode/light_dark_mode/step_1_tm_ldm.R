@@ -1,31 +1,31 @@
 # -----------------------------------------------------------
-# File: generate_plate_plan.R
-# Harmonized version of the generate_plate_plan function for light dark mode (tm_ldm).
-# This function assists in creating a new plate plan or loading an existing one.
-# It retrieves inputs (either pre-recorded or interactively) via a unified helper
-# and saves the resulting plate plan globally as 'plate_plan_df'.
+# primary mode : tracking mode
+# secondary mode : light dark mode
+# Function: generate_plate_plan
+# Purpose: Creates or loads a multi-well plate plan for light/dark mode experiments.
+# It prompts for required inputs (or uses pre-recorded values) to either generate
+# a new randomized plate plan or load an existing one, saving the result globally as 'plate_plan_df'.
 # -----------------------------------------------------------
-
 generate_plate_plan <- function(plan_dir = "inputs/tracking_mode/light_dark_mode/plate_plan") {
-  
-  # Ensure the plate plan directory exists.
+  # Step 1: Ensure the plate plan directory exists
   if (!dir.exists(plan_dir)) {
     dir.create(plan_dir, recursive = TRUE)
     message("✔️ Directory created: ", plan_dir)
   }
   
+  # Step 2: Display the welcome message with bullet points
   message("\n---\n")
-  message("👋 Welcome to the Multi-Well Plate Plan Generator!\n")
+  message("👋 Welcome to the Plate Plan Generator!")
   message("📋 This function will help you:")
   message("   • Create a new plate plan or load an existing one.")
   message("   • Randomize well assignments for new plans.")
   message("   • Work with both '.csv' and '.xlsx' file formats.")
   message("   • Save the plate plan for later use.\n")
   
-  # Retrieve pre-recorded inputs from the global pipeline_inputs.
+  # Step 3: Retrieve pre-recorded pipeline inputs from the global environment
   pipeline_inputs <- get("pipeline_inputs", envir = .GlobalEnv)
   
-  # Unified helper to retrieve inputs.
+  # Step 4: Define a helper function to obtain and validate user inputs
   get_input_local <- function(param, prompt_msg, validate_fn = function(x) TRUE,
                               transform_fn = function(x) x,
                               error_msg = "❌ Invalid input. Please try again.") {
@@ -53,19 +53,18 @@ generate_plate_plan <- function(plan_dir = "inputs/tracking_mode/light_dark_mode
     }
   }
   
-  # --- Begin Plate Plan Setup ---
-  
+  # Step 5: Start Plate Plan Setup by asking whether to create a new plan or load an existing one
   create_plan <- get_input_local("create_plate_plan",
                                  "❓ Do you want to create a new plate plan? (yes/no): ",
                                  validate_fn = function(x) tolower(x) %in% c("yes", "y", "no", "n"),
                                  transform_fn = function(x) tolower(trimws(x)),
                                  error_msg = "❌ Please enter 'yes' or 'no'.")
-  
   plate_plan <- NULL
   plate_plan_name <- NULL
   
+  # Step 6: If creating a new plate plan, gather necessary inputs and generate the plan
   if (create_plan %in% c("yes", "y")) {
-    # New plate plan creation branch.
+    # 6.1: Get plate type (24, 48, or 96 wells)
     plate_type <- get_input_local("plate_type",
                                   "❓ Enter the type of plate (24, 48, or 96 wells): ",
                                   validate_fn = function(x) !is.na(x) && x %in% c(24, 48, 96),
@@ -77,6 +76,7 @@ generate_plate_plan <- function(plan_dir = "inputs/tracking_mode/light_dark_mode
     rows <- LETTERS[1:(ifelse(plate_type == 24, 4, ifelse(plate_type == 48, 6, 8)))]
     cols <- 1:(ifelse(plate_type == 24, 6, ifelse(plate_type == 48, 8, 12)))
     
+    # 6.2: Get number of conditions and their names
     conditions_number <- get_input_local("conditions_number",
                                          "❓ Enter the number of conditions: ",
                                          validate_fn = function(x) !is.na(x) && x > 0,
@@ -95,6 +95,7 @@ generate_plate_plan <- function(plan_dir = "inputs/tracking_mode/light_dark_mode
     conditions <- trimws(unlist(strsplit(conditions_name_input, ",")))
     message("✔️ Conditions recorded: ", paste(conditions, collapse = ", "))
     
+    # 6.3: Get replicates and units per replicate, then validate total units
     replicates_number <- get_input_local("replicates_number",
                                          "❓ Enter the number of replicates per condition: ",
                                          validate_fn = function(x) !is.na(x) && x > 0,
@@ -113,6 +114,7 @@ generate_plate_plan <- function(plan_dir = "inputs/tracking_mode/light_dark_mode
     total_units <- conditions_number * replicates_number * units_per_replicate
     message("✔️ Total units: ", total_units, " (within ", total_wells, " wells).")
     
+    # 6.4: Set randomization seed and record file names for CSV and Excel outputs
     seed_value <- get_input_local("seed_value",
                                   "❓ Enter a seed value for randomization: ",
                                   validate_fn = function(x) !is.na(x),
@@ -121,7 +123,6 @@ generate_plate_plan <- function(plan_dir = "inputs/tracking_mode/light_dark_mode
     set.seed(seed_value)
     message("✔️ Seed value set to: ", seed_value)
     
-    # Prompt separately for CSV and Excel file names
     plate_plan_name_csv <- get_input_local("plate_plan_name_csv",
                                            "❓ Enter a file name for the plate plan CSV (with .csv extension): ",
                                            validate_fn = function(x) x != "" && grepl("\\.csv$", x, ignore.case = TRUE),
@@ -134,10 +135,9 @@ generate_plate_plan <- function(plan_dir = "inputs/tracking_mode/light_dark_mode
                                             transform_fn = function(x) trimws(x),
                                             error_msg = "❌ Invalid Excel file name. Must end with .xlsx.")
     
-    # Generate the plate plan data frame.
+    # 6.5: Generate plate assignments and build the plate plan data frame
     wells <- with(expand.grid(Row = rows, Column = cols),
                   paste0(Row, sprintf("%02d", Column)))
-    
     assignments <- unlist(lapply(conditions, function(cond) {
       rep(paste0(cond, "_", seq_len(replicates_number)), each = units_per_replicate)
     }))
@@ -146,15 +146,10 @@ generate_plate_plan <- function(plan_dir = "inputs/tracking_mode/light_dark_mode
     
     plate_matrix <- matrix(assignments, nrow = length(rows), ncol = length(cols),
                            byrow = TRUE, dimnames = list(rows, cols))
-    
-    plate_plan <- data.frame(
-      animal = wells,
-      condition = as.vector(plate_matrix),
-      stringsAsFactors = FALSE
-    )
+    plate_plan <- data.frame(animal = wells, condition = as.vector(plate_matrix), stringsAsFactors = FALSE)
     message("🎉 New plate plan created successfully!")
     
-    # Save the plate plan in both formats.
+    # 6.6: Save the plate plan in CSV and Excel formats
     csv_path <- file.path(plan_dir, plate_plan_name_csv)
     write.csv2(plate_plan, file = csv_path, row.names = FALSE)
     message("💾 Plate plan saved as CSV: ", csv_path)
@@ -164,7 +159,7 @@ generate_plate_plan <- function(plan_dir = "inputs/tracking_mode/light_dark_mode
     message("💾 Plate plan saved as Excel file: ", xlsx_path)
     
   } else {
-    # Existing plate plan branch.
+    # Step 7: If loading an existing plate plan, validate the file and read it in
     plate_plan_name <- get_input_local("plate_plan_name",
                                        "❓ Enter the existing plate plan file name (with .csv or .xlsx extension): ",
                                        validate_fn = function(x) {
@@ -195,7 +190,7 @@ generate_plate_plan <- function(plan_dir = "inputs/tracking_mode/light_dark_mode
     }
     message("✔️ Plate plan loaded and validated successfully!")
     
-    # Save the loaded plate plan back to its original file.
+    # 7.1: Save the loaded plan back to its file in its original format
     if (file_extension == "csv") {
       csv_path <- file.path(plan_dir, plate_plan_name)
       write.csv2(plate_plan, file = csv_path, row.names = FALSE)
@@ -207,6 +202,7 @@ generate_plate_plan <- function(plan_dir = "inputs/tracking_mode/light_dark_mode
     }
   }
   
+  # Step 8: Finalize and assign the plate plan globally, then return it
   message("🎉 Plate plan generation completed!")
   message("💾 Plate plan is now available globally as 'plate_plan_df'.\n")
   assign("plate_plan_df", plate_plan, envir = .GlobalEnv)

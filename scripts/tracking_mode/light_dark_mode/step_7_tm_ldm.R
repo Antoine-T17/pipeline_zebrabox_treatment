@@ -1,58 +1,41 @@
 # -----------------------------------------------------------
-# File: pre_visualization_and_delta_data_treatment.R
+# primary mode : tracking mode
+# secondary mode : light_dark mode
+# Function: pre_visualization_data_treatment
+# Purpose: Performs three pretreatment steps:
+#          Part I – Lineplots: Removes unwanted conditions, suspect wells, and response columns,
+#            aggregates data over a specified period, and calculates normalized sums.
+#          Part II – Boxplots: Filters data for user-selected light and dark periods and calculates group means.
+#          Part III – Delta Boxplots: Displays available period boundaries, prompts for boundaries and a delta,
+#            validates and filters data around each boundary, and calculates group means.
+#          The function returns a list with three elements (lineplots, boxplots, delta_boxplots)
+#          and saves several intermediate outputs globally.
 # -----------------------------------------------------------
-# This combined function performs three pretreatment steps:
-#
-# Part I – Pretreatment for Lineplots:
-#   - Removes unwanted conditions, suspect wells, and response variable columns.
-#   - Aggregates the data over a specified aggregation period.
-#   - Calculates normalized sums (for visualization lineplots).
-#
-# Part II – Pretreatment for Boxplots:
-#   - Filters the data for user-selected light and dark periods.
-#   - Calculates group means (for generating boxplots).
-#
-# Part III – Pretreatment for Delta Boxplots:
-#   - Displays available period boundaries (from a global 'boundary_associations').
-#   - Prompts for one or more boundaries and a delta value.
-#   - Validates that (n - delta) and (n + delta) exist.
-#   - Filters data at (n - delta), n, and (n + delta), labeling them as 
-#     "before", "switch", or "after".
-#   - Calculates group means for delta boxplot pretreatment.
-#
-# The function returns a list with three elements:
-#   - lineplots: Data for visualization lineplots (normalized_sums)
-#   - boxplots: Data for pretreatment boxplots (boxplot_data)
-#   - delta_boxplots: Data for pretreatment delta boxplots (delta_boxplot_data)
-#
-# Note: Inputs are recorded in the global list 'input_record_list' and some
-#       pre-recorded inputs are read from the global 'pipeline_inputs'.
-# -----------------------------------------------------------
-
 pre_visualization_data_treatment <- function(zone_combined_data) {
+  # Step 1: Display welcome message.
   message("\n---\n")
-  message("👋 Welcome to the Data Pretreatment Process (Light/Dark Mode)!\n")
-  message("This pipeline will prepare data for visualization (lineplots and boxplots) ")
-  message("and for delta analysis (delta boxplots pretreatment).\n")
+  message("👋 Welcome to the Data Pretreatment Process (Light/Dark Mode)!")
+  message("📋 This pipeline will help you:")
+  message("   • Prepare data for visualization lineplots and boxplots.")
+  message("   • Prepare data for delta boxplot analysis.\n")
   
-  # Retrieve pre-recorded inputs from the global pipeline_inputs.
+  # Step 2: Retrieve pre-recorded inputs.
   pipeline_inputs <- get("pipeline_inputs", envir = .GlobalEnv)
   
-  # Helper: splits comma-separated input and trims whitespace.
+  # Step 3: Define helper to split comma-separated strings.
   split_and_trim <- function(x) trimws(unlist(strsplit(x, ",")))
   
-  # Unified input helper.
+  # Step 4: Define unified input helper.
   get_input_local <- function(param, prompt_msg, validate_fn = function(x) TRUE,
                               transform_fn = function(x) x,
                               error_msg = "❌ Invalid input. Please try again.") {
     if (!is.null(pipeline_inputs[[param]]) && pipeline_inputs[[param]] != "") {
       candidate <- transform_fn(as.character(pipeline_inputs[[param]]))
-      # Treat a single "no" (case-insensitive) as an empty vector.
       if (length(candidate) == 1 && tolower(candidate) == "no") candidate <- character(0)
       message("💾 Using pre-recorded input for '", param, "': ",
-              if(length(candidate) == 0) "none" else paste(candidate, collapse = ", "))
+              if(length(candidate)==0) "none" else paste(candidate, collapse = ", "))
       if (validate_fn(candidate)) {
-        input_record_list[[param]] <<- if(length(candidate) == 0) "none" else paste(candidate, collapse = ", ")
+        input_record_list[[param]] <<- if(length(candidate)==0) "none" else paste(candidate, collapse = ", ")
         return(candidate)
       } else {
         message("⚠️ Pre-recorded input for '", param, "' is invalid. Switching to interactive prompt.")
@@ -65,8 +48,8 @@ pre_visualization_data_treatment <- function(zone_combined_data) {
       if (length(candidate) == 1 && candidate == "") candidate <- character(0)
       if (validate_fn(candidate)) {
         message("✔️ Input for '", param, "' recorded: ",
-                if(length(candidate) == 0) "none" else paste(candidate, collapse = ", "))
-        input_record_list[[param]] <<- if(length(candidate) == 0) "none" else paste(candidate, collapse = ", ")
+                if(length(candidate)==0) "none" else paste(candidate, collapse = ", "))
+        input_record_list[[param]] <<- if(length(candidate)==0) "none" else paste(candidate, collapse = ", ")
         return(candidate)
       } else {
         message(error_msg)
@@ -75,7 +58,7 @@ pre_visualization_data_treatment <- function(zone_combined_data) {
   }
   
   ## ===================== Common Pretreatment Steps =====================
-  # Step 1: Define condition orders.
+  # Step 5: Define condition orders.
   message("\n📋 Common pretreatment steps...")
   available_conditions <- unique(zone_combined_data$condition)
   available_condition_grouped <- unique(zone_combined_data$condition_grouped)
@@ -106,7 +89,7 @@ pre_visualization_data_treatment <- function(zone_combined_data) {
   assign("generated_condition_grouped_order", condition_grouped_order, envir = .GlobalEnv)
   message("💾 Condition orders saved globally.")
   
-  # Step 2: Remove specified conditions.
+  # Step 6: Remove specified conditions.
   message("\n🧹 Removing specified conditions (if any)...")
   remove_conditions <- get_input_local("remove_conditions",
                                        "❓ Enter condition(s) to remove (comma-separated) or type 'no' to keep all: ",
@@ -125,7 +108,7 @@ pre_visualization_data_treatment <- function(zone_combined_data) {
     }
   }
   
-  # Step 3: Remove suspect wells.
+  # Step 7: Remove suspect wells.
   message("\n🕵️ Removing suspect wells (if specified)...")
   remove_suspect_well <- get_input_local("remove_suspect_well",
                                          "❓ Enter suspect wells to remove (comma-separated) or type 'no' to keep all: ",
@@ -144,7 +127,7 @@ pre_visualization_data_treatment <- function(zone_combined_data) {
     }
   }
   
-  # Step 4: Remove specified response variable columns.
+  # Step 8: Remove specified response variable columns.
   message("\n🧹 Removing specified response variable columns (if any)...")
   remove_variables <- get_input_local("remove_variables",
                                       "❓ Enter response variable column(s) to remove (comma-separated) or type 'no' to keep all: ",
@@ -173,7 +156,7 @@ pre_visualization_data_treatment <- function(zone_combined_data) {
     response_vars <- setdiff(default_response_vars, vars_to_remove)
   }
   
-  # Step 5: Calculate number of wells per condition and zone.
+  # Step 9: Calculate well counts per condition and zone.
   message("\n📊 Calculating well counts per condition and zone...")
   specific_minute <- 1
   wells_per_condition <- zone_combined_data %>% 
@@ -212,7 +195,6 @@ pre_visualization_data_treatment <- function(zone_combined_data) {
   
   ## ===================== Part II – Pretreatment for Boxplots =====================
   message("\n📋 Preparing boxplot data (pretreatment for visualization)...")
-  # Use global full period sequence if it exists; otherwise fall back on the data.
   if (exists("all_periods", envir = .GlobalEnv)) {
     available_periods <- get("all_periods", envir = .GlobalEnv)
   } else {
@@ -220,7 +202,6 @@ pre_visualization_data_treatment <- function(zone_combined_data) {
   }
   message("ℹ️ Available periods: ", paste(available_periods, collapse = ", "))
   
-  # In light/dark mode, prompt for light and dark periods.
   light_period <- get_input_local("light_period",
                                   "❓ Enter light periods to include (comma-separated): ",
                                   validate_fn = function(x) {
@@ -266,25 +247,19 @@ pre_visualization_data_treatment <- function(zone_combined_data) {
   
   ## ===================== Part III – Pretreatment for Delta Boxplots =====================
   message("\n📋 Preparing delta boxplot data (pretreatment for visualization)...")
-  
-  # Ensure that boundary_associations exists.
   if (!exists("boundary_associations", envir = .GlobalEnv)) {
     stop("❌ 'boundary_associations' not found. Define it before running this function.")
   }
   boundary_associations <- get("boundary_associations", envir = .GlobalEnv)
   
-  # Print available boundaries using the rounded values.
   message("ℹ️ Available period boundaries (rounded) and transitions:")
   message(paste0(apply(boundary_associations, 1, function(row) {
     paste0("Rounded Boundary: ", row["boundary_time"], " (", row["transition"], ")")
   }), collapse = "\n"))
   
-  # Use a tolerance (in minutes) for matching input boundaries to available ones.
   tolerance <- 0.2
-  
-  # New validation: each provided value must be within tolerance of at least one available boundary.
   selected_boundaries <- get_input_local("selected_period_boundaries",
-                                         "❓ Enter one or more period boundaries (choose from the rounded values above, comma-separated): ",
+                                         "❓ Enter one or more period boundaries (comma-separated, choose from the rounded values above): ",
                                          validate_fn = function(x) {
                                            vals <- as.numeric(trimws(unlist(strsplit(as.character(x), ","))))
                                            length(vals) > 0 &&
@@ -292,11 +267,8 @@ pre_visualization_data_treatment <- function(zone_combined_data) {
                                                any(abs(v - as.numeric(boundary_associations$boundary_time)) < tolerance)
                                              }))
                                          },
-                                         transform_fn = function(x) {
-                                           as.numeric(trimws(unlist(strsplit(as.character(x), ","))))
-                                         },
-                                         error_msg = "❌ Invalid boundaries. Enter numeric values that match the rounded list (within tolerance)."
-  )
+                                         transform_fn = function(x) as.numeric(trimws(unlist(strsplit(as.character(x), ",")))),
+                                         error_msg = "❌ Invalid boundaries. Enter numeric values that match the rounded list (within tolerance).")
   message("✔️ Selected boundaries: ", paste(selected_boundaries, collapse = ", "))
   
   delta_value <- get_input_local("delta_value",
@@ -306,8 +278,7 @@ pre_visualization_data_treatment <- function(zone_combined_data) {
                                    !is.na(val) && val > 0
                                  },
                                  transform_fn = function(x) as.numeric(trimws(x)),
-                                 error_msg = "❌ Enter a positive numeric delta."
-  )
+                                 error_msg = "❌ Enter a positive numeric delta.")
   message("✔️ Delta value set to: ", delta_value)
   
   all_starts <- zone_combined_data$start
@@ -346,7 +317,7 @@ pre_visualization_data_treatment <- function(zone_combined_data) {
   
   delta_boxplot_data <- calculate_delta_means(filtered_delta)
   
-  ## ===================== Save Global Outputs (Optional) =====================
+  ## ===================== Save Global Outputs =====================
   assign("pretreated_data_for_lineplots_df", normalized_sums, envir = .GlobalEnv)
   assign("pretreated_data_for_boxplots_df", boxplot_data, envir = .GlobalEnv)
   assign("pretreated_delta_data_for_boxplots_df", delta_boxplot_data, envir = .GlobalEnv)

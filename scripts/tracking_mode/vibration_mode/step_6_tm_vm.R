@@ -1,27 +1,26 @@
 # -----------------------------------------------------------
-# File: calculate_and_clean_zone_data.R
+# primary mode : tracking mode
+# secondary mode : vibration mode
+# Function: calculate_and_clean_zone_data
+# Purpose: Processes each zone’s data by computing new variables,
+#          converting the 'start' column to minutes (using a user-specified unit),
+#          filtering out the last minute, reordering columns, and combining all zones.
+#          The final result is saved globally as 'zone_calculated_list'.
 # -----------------------------------------------------------
-# Harmonized version of the calculate_and_clean_zone_data function for vibration mode.
-# Harmonized version of the calculate_and_clean_zone_data function.
-# This function processes each zone’s data by computing new variables,
-# converting the 'start' column to minutes (using a user-specified unit),
-# filtering out the last minute, reordering columns, and combining all zones.
-# The final result is saved globally as 'zone_calculated_list'.
-# -----------------------------------------------------------
-
 calculate_and_clean_zone_data <- function(zone_data_list) {
+  # Step 1: Display welcome message with bullet points.
   message("\n---\n")
-  message("👋 Welcome to the Zone Calculation and Cleaning Process!\n")
+  message("👋 Welcome to the Zone Calculation and Cleaning Process!")
   message("📋 This function will help you:")
   message("   • Process and clean zone-specific data.")
   message("   • Calculate new numeric variables and convert 'start' time to minutes.")
   message("   • Remove the last minute of data and reorder columns.")
   message("   • Combine all zones into a single dataset and save globally as 'zone_calculated_list'.\n")
   
-  # Retrieve pre-recorded inputs from the global pipeline_inputs.
+  # Step 2: Retrieve pre-recorded inputs from the global pipeline_inputs.
   pipeline_inputs <- get("pipeline_inputs", envir = .GlobalEnv)
   
-  # Unified helper.
+  # Step 3: Define a helper function to obtain and validate user inputs.
   get_input_local <- function(param, prompt_msg, validate_fn = function(x) TRUE,
                               transform_fn = function(x) x,
                               error_msg = "❌ Invalid input. Please try again.") {
@@ -48,20 +47,21 @@ calculate_and_clean_zone_data <- function(zone_data_list) {
     }
   }
   
-  # Step 1: Determine the unit of the 'start' column.
+  # Step 4: Determine the unit of the 'start' column.
   start_unit <- get_input_local("start_column_unit",
                                 "❓ What is the unit of the 'start' column? (h for hours, m for minutes, s for seconds): ",
                                 validate_fn = function(x) tolower(x) %in% c("h", "m", "s"),
                                 transform_fn = function(x) tolower(trimws(x)),
                                 error_msg = "❌ Please enter 'h', 'm', or 's'.")
   
+  # Step 5: Process each zone in the zone_data_list.
   processed_zones <- list()
   for (zone_name in names(zone_data_list)) {
     message("\n🛠️ Processing Zone: ", zone_name)
     zone_data <- zone_data_list[[zone_name]]
     message("✔️ Zone data loaded.")
     
-    # Step 2: Calculate new numeric variables.
+    # Step 6: Calculate new numeric variables.
     message("🛠️ Calculating new variables...")
     numeric_columns <- c("smldist", "lardist", "smldur", "lardur", "smlct", "larct")
     for (col in numeric_columns) {
@@ -69,7 +69,7 @@ calculate_and_clean_zone_data <- function(zone_data_list) {
         zone_data[[col]] <- as.numeric(gsub(",", ".", as.character(zone_data[[col]])))
       }
     }
-    zone_data <- zone_data %>%
+    zone_data <- zone_data %>% 
       mutate(
         totaldist = ifelse(!is.na(smldist) & !is.na(lardist), smldist + lardist, NA),
         totaldur  = ifelse(!is.na(smldur) & !is.na(lardur), smldur + lardur, NA),
@@ -77,7 +77,7 @@ calculate_and_clean_zone_data <- function(zone_data_list) {
       )
     message("✔️ New variables calculated.")
     
-    # Step 3: Convert the 'start' column.
+    # Step 7: Convert the 'start' column to minutes.
     message("🛠️ Converting 'start' column to minutes...")
     if ("start" %in% colnames(zone_data)) {
       zone_data$start <- as.numeric(gsub(",", ".", as.character(zone_data$start)))
@@ -94,7 +94,7 @@ calculate_and_clean_zone_data <- function(zone_data_list) {
       message("⚠️ 'start' column not found; skipping conversion.")
     }
     
-    # Step 4: Remove rows corresponding to the last minute.
+    # Step 8: Remove rows corresponding to the last minute.
     message("🛠️ Removing rows from the last minute...")
     if ("start" %in% colnames(zone_data)) {
       max_start <- max(zone_data$start, na.rm = TRUE)
@@ -105,12 +105,12 @@ calculate_and_clean_zone_data <- function(zone_data_list) {
       message("⚠️ 'start' column missing; skipping row removal.")
     }
     
-    # Step 5: Add the 'zone' column and reorder.
+    # Step 9: Add the 'zone' column and reorder columns.
     message("🛠️ Adding 'zone' column...")
     zone_data <- zone_data %>% mutate(zone = zone_name) %>% relocate(zone, .after = period_without_numbers)
     message("✔️ 'zone' column added.")
     
-    # Step 6: Filter and reorder columns.
+    # Step 10: Filter and reorder columns.
     message("🛠️ Filtering and reordering columns...")
     desired_columns <- c("animal", "condition", "condition_grouped", "condition_tagged",
                          "period", "period_with_numbers", "period_without_numbers",
@@ -125,10 +125,12 @@ calculate_and_clean_zone_data <- function(zone_data_list) {
     processed_zones[[zone_name]] <- zone_data
   }
   
+  # Step 11: Combine processed zone data from all zones.
   message("🛠️ Combining processed zone data...")
   zone_combined <- dplyr::bind_rows(processed_zones)
   message("✔️ Zones combined successfully.")
   
+  # Step 12: Finalize and save processed data globally.
   message("🎉 Zone calculation and cleaning completed!")
   message("💾 Processed zone data saved globally as 'zone_calculated_list'.\n")
   assign("zone_calculated_list", list(processed_zones = processed_zones, zone_combined = zone_combined), envir = .GlobalEnv)

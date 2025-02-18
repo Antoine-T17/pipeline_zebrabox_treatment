@@ -1,19 +1,17 @@
 # -----------------------------------------------------------
-# File: generate_and_save_boxplots_with_excel_files.R
+# primary mode : tracking mode
+# secondary mode : vibration mode
+# Function: generate_and_save_boxplots_with_excel_files
+# Purpose: Generates boxplots from pretreated boxplot data, validates the data structure,
+#          manages colors and themes, saves plots in PNG and interactive HTML formats,
+#          and writes pairwise percentage differences to an Excel file with conditional formatting.
+#          Interactive HTML plots are first saved to a temporary directory and then moved.
 # -----------------------------------------------------------
-# Harmonized version of the generate_and_save_boxplots_with_excel_files function.
-# This function generates boxplots from pretreated boxplot data,
-# validates the data structure, manages colors and themes, saves plots
-# in PNG and interactive HTML formats, and writes pairwise percentage 
-# differences to an Excel file with conditional formatting.
-# Interactive HTML plots are first saved to a temporary directory and then 
-# moved to the final destination.
-# -----------------------------------------------------------
-
 generate_and_save_boxplots_with_excel_files <- function(input_data = get("pretreated_data_for_boxplots_df", envir = .GlobalEnv),
                                                         output_dir = "outputs/tracking_mode/vibration_mode/figures/boxplots",
                                                         excel_output_dir = "outputs/tracking_mode/vibration_mode/tables") {
   tryCatch({
+    # Step 1: Display welcome message.
     message("\n---\n")
     message("👋 Welcome to the Boxplot Generation Process!")
     message("📋 This function will help you:")
@@ -22,11 +20,11 @@ generate_and_save_boxplots_with_excel_files <- function(input_data = get("pretre
     message("   • Save plots in PNG and interactive HTML formats.")
     message("   • Write pairwise percentage differences to an Excel file.\n")
     
-    # Retrieve pre-recorded inputs from the global pipeline_inputs.
+    # Step 2: Retrieve pre-recorded inputs and initialize input record.
     pipeline_inputs <- get("pipeline_inputs", envir = .GlobalEnv)
     input_record_list <<- list()
     
-    # Unified input helper.
+    # Step 3: Define unified input helper.
     get_input_local <- function(param, prompt_msg, default_value = NULL,
                                 validate_fn = function(x) TRUE,
                                 transform_fn = function(x) x,
@@ -57,7 +55,7 @@ generate_and_save_boxplots_with_excel_files <- function(input_data = get("pretre
     
     split_and_trim <- function(x) trimws(unlist(strsplit(x, ",")))
     
-    # Step 1: Ask whether to generate boxplots.
+    # Step 4: Ask whether to generate boxplots.
     generate_boxplots <- get_input_local("generate_boxplots",
                                          "❓ Do you want to generate boxplots? (yes/no): ",
                                          default_value = "yes",
@@ -71,6 +69,7 @@ generate_and_save_boxplots_with_excel_files <- function(input_data = get("pretre
       message("✔️ Proceeding with boxplot figure generation.")
     }
     
+    # Step 5: Validate input data structure.
     message("🔍 Validating input data structure for boxplots...")
     if (!"data.frame" %in% class(input_data)) {
       message("❌ input_data must be a data frame. Skipping boxplot generation.")
@@ -84,7 +83,7 @@ generate_and_save_boxplots_with_excel_files <- function(input_data = get("pretre
     boxplot_data <- input_data
     message("✔️ Data structure validated.")
     
-    # Step 3: Remove acclimatation period if required.
+    # Step 6: Remove acclimatation period if required.
     keep_acclimatation <- get_input_local("keep_acclimatation",
                                           "❓ Keep the acclimatation period? (yes/no): ",
                                           default_value = "no",
@@ -98,7 +97,7 @@ generate_and_save_boxplots_with_excel_files <- function(input_data = get("pretre
       message("✔️ Acclimatation period retained.")
     }
     
-    # Step 4: Define output directories.
+    # Step 7: Define output directories.
     html_dir <- file.path(output_dir, "html")
     png_dir  <- file.path(output_dir, "png")
     excel_path <- file.path(excel_output_dir)
@@ -107,7 +106,7 @@ generate_and_save_boxplots_with_excel_files <- function(input_data = get("pretre
     dir.create(excel_path, recursive = TRUE, showWarnings = FALSE)
     message("✔️ Output directories created.")
     
-    # Step 5: Manage colors.
+    # Step 8: Manage colors.
     custom_color <- get_input_local("custom_color",
                                     "🎨 Enter custom colors for conditions (comma-separated), or press Enter for defaults: ",
                                     validate_fn = function(x) TRUE,
@@ -137,7 +136,7 @@ generate_and_save_boxplots_with_excel_files <- function(input_data = get("pretre
       message(sprintf("   - %s: %s", group, colors[group]))
     }
     
-    # Step 6: Define themes as functions.
+    # Step 9: Define themes.
     light_theme <- function(base_size = 11, base_family = "") {
       theme_bw() %+replace% theme(
         plot.title = element_text(color = "black", size = 14, hjust = 0.5),
@@ -176,7 +175,7 @@ generate_and_save_boxplots_with_excel_files <- function(input_data = get("pretre
       )
     }
     
-    # Step 7: Prompt for output formats.
+    # Step 10: Prompt for output formats.
     generate_boxplots_html <- get_input_local("generate_boxplots_html",
                                               "❓ Generate interactive HTML boxplots? (yes/no): ",
                                               default_value = "no",
@@ -190,7 +189,7 @@ generate_and_save_boxplots_with_excel_files <- function(input_data = get("pretre
                                              transform_fn = function(x) tolower(trimws(x)),
                                              error_msg = "❌ Please enter 'yes' or 'no'.")
     
-    # Step 8: Generate boxplots.
+    # Step 11: Generate boxplots.
     if (do_plot_generation) {
       message("⏳ Generating boxplots... This may take a moment.")
       for (response_var in grep("^mean_", colnames(boxplot_data), value = TRUE)) {
@@ -199,12 +198,11 @@ generate_and_save_boxplots_with_excel_files <- function(input_data = get("pretre
           for (theme_name in c("light", "dark")) {
             current_theme <- if (theme_name == "light") light_theme() else dark_theme()
             
-            # Generate static PNG version.
+            # Generate static PNG plot.
             p_png <- ggplot(zone_data, aes(x = condition_grouped, y = .data[[response_var]], fill = condition_grouped)) +
               geom_boxplot(outlier.shape = NA, alpha = 0.6,
                            color = if (theme_name == "light") "black" else "white") +
-              geom_point(shape = 21, 
-                         position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.2),
+              geom_point(shape = 21, position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.2),
                          size = 1.75, alpha = 0.6,
                          color = if (theme_name == "light") "black" else "white") +
               facet_wrap(~period_without_numbers, scales = "free_x") +
@@ -213,7 +211,7 @@ generate_and_save_boxplots_with_excel_files <- function(input_data = get("pretre
                 get("custom_colors_global", envir = .GlobalEnv) else colors) +
               current_theme
             
-            # Generate interactive HTML version with tooltips.
+            # Generate interactive HTML plot.
             p_html <- ggplot(zone_data, aes(x = condition_grouped, y = .data[[response_var]], fill = condition_grouped,
                                             text = paste("Condition Grouped:", condition_grouped,
                                                          "<br>Condition Tagged:", condition_tagged,
@@ -221,8 +219,7 @@ generate_and_save_boxplots_with_excel_files <- function(input_data = get("pretre
                                                          "<br>Response:", .data[[response_var]]))) +
               geom_boxplot(outlier.shape = NA, alpha = 0.6,
                            color = if (theme_name == "light") "black" else "white") +
-              geom_point(shape = 21, 
-                         position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.2),
+              geom_point(shape = 21, position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.2),
                          size = 1.5, alpha = 0.6,
                          color = if (theme_name == "light") "black" else "white") +
               facet_wrap(~period_without_numbers, scales = "free_x") +
@@ -260,12 +257,13 @@ generate_and_save_boxplots_with_excel_files <- function(input_data = get("pretre
       message("❌ Boxplot generation skipped.")
     }
     
-    # Step 9: Generate pairwise percentage differences and write Excel file.
+    # Step 12: Generate pairwise percentage differences and write Excel file.
     percentage_diff_results <- list()
     for (response_var in grep("^mean_", colnames(boxplot_data), value = TRUE)) {
       message(sprintf("📊 Calculating percentage differences for %s...", response_var))
       results <- boxplot_data %>% group_by(period_without_numbers, zone) %>% 
-        tidyr::nest() %>% dplyr::mutate(
+        tidyr::nest() %>% 
+        dplyr::mutate(
           comparison_results = purrr::map(data, function(df) {
             condition_pairs <- combn(unique(df$condition_grouped), 2, simplify = FALSE)
             purrr::map_dfr(condition_pairs, function(pair) {
