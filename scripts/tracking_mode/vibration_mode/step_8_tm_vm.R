@@ -1,11 +1,12 @@
 # -----------------------------------------------------------
 # File: generate_and_save_lineplots.R
 # -----------------------------------------------------------
-# Harmonized version of the generate_and_save_lineplots function for vibration mode.
+# Harmonized version of the generate_and_save_lineplots function.
 # This function generates line plots from the pretreated line plot data,
 # validates the data structure, manages colors and themes, and saves plots
 # in PNG and interactive HTML formats to specified directories.
-# Interactive HTML plots are first saved to a temporary directory and then moved to the final destination.
+# Interactive HTML plots are first saved to a temporary directory and then
+# moved to the final destination.
 # -----------------------------------------------------------
 
 generate_and_save_lineplots <- function(input_data = get("pretreated_data_for_lineplots_df", envir = .GlobalEnv),
@@ -20,6 +21,7 @@ generate_and_save_lineplots <- function(input_data = get("pretreated_data_for_li
     
     # Retrieve pre-recorded inputs from the global pipeline_inputs.
     pipeline_inputs <- get("pipeline_inputs", envir = .GlobalEnv)
+    input_record_list <<- list()
     
     # Unified input helper.
     get_input_local <- function(param, prompt_msg, validate_fn = function(x) TRUE,
@@ -114,17 +116,19 @@ generate_and_save_lineplots <- function(input_data = get("pretreated_data_for_li
     }
     
     # Step 2: Define output directories.
-    message("📁 Creating output directories for line boxplots...")
-    html_dir <- "outputs/tracking_mode/vibration_mode/figures/lineplots/html"
+    message("📁 Creating output directories for line plots...")
+    html_dir <- file.path(output_dir, "html")
     png_dir  <- file.path(output_dir, "png")
-    temp_dir <- tempdir()  # Use system temporary directory (short path)
+    temp_dir <- tempdir()  # system temporary directory
     dir.create(png_dir, recursive = TRUE, showWarnings = FALSE)
+    dir.create(html_dir, recursive = TRUE, showWarnings = FALSE)
     message("✔️ Output directories created.")
     
     # Step 3: Manage colors.
     message("🎨 Managing colors...")
     condition_groups <- unique(input_data$condition_grouped)
-    default_colors <- rep(c("#FF6666", "#66B2FF", "#99CC33", "#FFCC33", "#CC66FF"), length.out = length(condition_groups))
+    default_colors <- rep(c("#FF6666", "#66B2FF", "#99CC33", "#FFCC33", "#CC66FF"),
+                          length.out = length(condition_groups))
     names(default_colors) <- condition_groups
     
     custom_color_input <- get_input_local("custom_color",
@@ -162,42 +166,46 @@ generate_and_save_lineplots <- function(input_data = get("pretreated_data_for_li
     assign("generated_colors_global", generated_colors, envir = .GlobalEnv)
     message("✔️ Colors saved globally.")
     
-    # Define themes.
-    light_theme <- theme_bw() %+replace% theme(
-      plot.title = element_text(color = "black", size = 14, hjust = 0.5),
-      axis.text.y = element_text(color = "black", size = 12),
-      axis.text.x = element_text(color = "black", size = 12),
-      axis.title.x = element_text(color = "black", size = 12, margin = margin(t = 5, r = 15)),
-      axis.title.y = element_text(color = "black", size = 12, angle = 90, margin = margin(r = 10)),
-      legend.position = "right",
-      legend.text = element_text(color = "black", size = 12, face = "italic"),
-      legend.title = element_blank(),
-      strip.text.x = element_text(size = 12),
-      strip.background = element_rect(fill = "white"),
-      plot.caption = element_text(color = "black", size = 8, hjust = 1, margin = margin(t = 10))
-    )
-    dark_theme <- theme_bw() %+replace% theme(
-      plot.title = element_text(color = "white", size = 14, hjust = 0.5),
-      axis.text.y = element_text(color = "white", size = 12),
-      axis.text.x = element_text(color = "white", size = 12),
-      axis.title.x = element_text(color = "white", size = 12, margin = margin(t = 5, r = 15)),
-      axis.title.y = element_text(color = "white", size = 12, angle = 90, margin = margin(r = 10)),
-      legend.position = "right",
-      legend.text = element_text(color = "white", size = 12, face = "italic"),
-      legend.title = element_blank(),
-      legend.background = element_rect(fill = "black"),
-      legend.key = element_rect(fill = "black"),
-      strip.text.x = element_text(color = "white", size = 12),
-      strip.background = element_rect(fill = "black", color = "white"),
-      plot.background = element_rect(fill = "black"),
-      panel.background = element_rect(fill = "black"),
-      panel.border = element_rect(color = "white", fill = NA),
-      panel.grid.major = element_line(color = "grey30"),
-      panel.grid.minor = element_line(color = "grey30"),
-      plot.caption = element_text(color = "white", size = 8, hjust = 1, margin = margin(t = 10))
-    )
+    # Step 4: Define themes as functions.
+    light_theme <- function(base_size = 11, base_family = "") {
+      theme_bw() %+replace% theme(
+        plot.title = element_text(color = "black", size = 14, hjust = 0.5),
+        axis.text.y = element_text(color = "black", size = 12),
+        axis.text.x = element_text(color = "black", size = 12),
+        axis.title.x = element_text(color = "black", size = 12, margin = margin(t = 5, r = 15)),
+        axis.title.y = element_text(color = "black", size = 12, angle = 90, margin = margin(r = 10)),
+        legend.position = "right",
+        legend.text = element_text(color = "black", size = 12, face = "italic"),
+        legend.title = element_blank(),
+        strip.text.x = element_text(size = 12),
+        strip.background = element_rect(fill = "white"),
+        plot.caption = element_text(color = "black", size = 8, hjust = 1, margin = margin(t = 10))
+      )
+    }
+    dark_theme <- function(base_size = 11, base_family = "") {
+      theme_bw() %+replace% theme(
+        plot.title = element_text(color = "white", size = 14, hjust = 0.5),
+        axis.text.y = element_text(color = "white", size = 12),
+        axis.text.x = element_text(color = "white", size = 12),
+        axis.title.x = element_text(color = "white", size = 12, margin = margin(t = 5, r = 15)),
+        axis.title.y = element_text(color = "white", size = 12, angle = 90, margin = margin(r = 10)),
+        legend.position = "right",
+        legend.text = element_text(color = "white", size = 12, face = "italic"),
+        legend.title = element_blank(),
+        legend.background = element_rect(fill = "black"),
+        legend.key = element_rect(fill = "black"),
+        strip.text.x = element_text(color = "white", size = 12),
+        strip.background = element_rect(fill = "black", color = "white"),
+        plot.background = element_rect(fill = "black"),
+        panel.background = element_rect(fill = "black"),
+        panel.border = element_rect(color = "white", fill = NA),
+        panel.grid.major = element_line(color = "grey30"),
+        panel.grid.minor = element_line(color = "grey30"),
+        plot.caption = element_text(color = "white", size = 8, hjust = 1, margin = margin(t = 10))
+      )
+    }
     
-    # Step 7: Prompt for output formats.
+    # Step 5: Prompt for output formats.
     generate_lines_plots_html <- get_input_local("generate_lines_plots_html",
                                                  "❓ Generate interactive HTML line plots? (yes/no): ",
                                                  validate_fn = function(x) tolower(x) %in% c("yes", "y", "no", "n"),
@@ -209,7 +217,7 @@ generate_and_save_lineplots <- function(input_data = get("pretreated_data_for_li
                                                 transform_fn = function(x) tolower(trimws(x)),
                                                 error_msg = "❌ Please enter 'yes' or 'no'.")
     
-    # Step 8: Generate line plots.
+    # Step 6: Generate line plots.
     response_vars <- grep("^sum_", colnames(input_data), value = TRUE)
     message("⏳ Generating line plots... This may take a moment.")
     for (response_var in response_vars) {
@@ -220,10 +228,26 @@ generate_and_save_lineplots <- function(input_data = get("pretreated_data_for_li
           next
         }
         for (theme_name in c("light", "dark")) {
-          current_theme <- if (theme_name == "light") light_theme else dark_theme
-          p <- ggplot(zone_data, aes(x = start_rounded, y = .data[[response_var]], color = condition, group = condition)) +
+          current_theme <- if (theme_name == "light") light_theme() else dark_theme()
+          
+          # Generate static PNG version.
+          p_png <- ggplot(zone_data, aes(x = start_rounded, y = .data[[response_var]], 
+                                         color = condition, group = condition)) +
             geom_point(size = 2) +
             geom_line(linewidth = 0.8) +
+            geom_vline(xintercept = period_boundaries, linetype = "dashed",
+                       color = if (theme_name == "light") "black" else "white", alpha = 0.7) +
+            labs(x = "Time (minutes)", y = sprintf("%s (Zone %s)", response_var, zone_number)) +
+            current_theme
+          
+          # Generate interactive HTML version with tooltips.
+          p_html <- ggplot(zone_data, aes(x = start_rounded, y = .data[[response_var]],
+                                          text = paste("Time:", start_rounded,
+                                                       "<br>Value:", .data[[response_var]],
+                                                       "<br>Condition:", condition))) +
+            geom_point(aes(color = condition, group = condition),
+                       size = 2) +
+            geom_line(aes(color = condition, group = condition), linewidth = 0.8) +
             geom_vline(xintercept = period_boundaries, linetype = "dashed",
                        color = if (theme_name == "light") "black" else "white", alpha = 0.7) +
             labs(x = "Time (minutes)", y = sprintf("%s (Zone %s)", response_var, zone_number)) +
@@ -232,7 +256,7 @@ generate_and_save_lineplots <- function(input_data = get("pretreated_data_for_li
           if (tolower(generate_lines_plots_png) %in% c("yes", "y")) {
             tryCatch({
               png_file <- file.path(png_dir, sprintf("plot_%s_zone_%s_%s.png", response_var, zone_number, theme_name))
-              ggsave(filename = png_file, plot = p, width = 12, height = 9, dpi = 300)
+              ggsave(filename = png_file, plot = p_png, width = 12, height = 9, dpi = 300)
               message("✔️ PNG saved: ", png_file)
             }, error = function(e) {
               message("❌ Error saving PNG for ", response_var, ", zone ", zone_number, ", theme ", theme_name, ": ", e$message)
@@ -242,7 +266,7 @@ generate_and_save_lineplots <- function(input_data = get("pretreated_data_for_li
             tryCatch({
               temp_html <- file.path(temp_dir, sprintf("plot_%s_zone_%s_%s.html", response_var, zone_number, theme_name))
               final_html <- file.path(html_dir, sprintf("plot_%s_zone_%s_%s.html", response_var, zone_number, theme_name))
-              suppressWarnings(saveWidget(plotly::ggplotly(p) %>% layout(boxmode = "group"), temp_html, selfcontained = TRUE))
+              suppressWarnings(saveWidget(plotly::ggplotly(p_html, tooltip = "text") %>% layout(boxmode = "group"), temp_html, selfcontained = TRUE))
               file.copy(temp_html, final_html, overwrite = TRUE)
               file.remove(temp_html)
               message("✔️ HTML saved: ", final_html)

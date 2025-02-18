@@ -3,7 +3,11 @@
 # Harmonized version of assign_periods_with_custom_durations for vibration mode.
 # This function assigns experimental periods based on user-defined boundaries.
 # It prompts for the period sequence and boundaries, assigns periods accordingly,
-# creates an additional column stripping numeric tags, and saves the results globally.
+# creates a simplified period column (without numeric tags), and saves the results globally.
+#
+# Correction: The function computes durations from the provided boundaries and
+# enforces a minimum duration equal to the integration period (extracted from the 'period' column).
+# This ensures that very narrow periods (e.g. vibration_3) are expanded if necessary.
 # -----------------------------------------------------------
 
 assign_periods_with_custom_durations <- function(enriched_data) {
@@ -22,7 +26,9 @@ assign_periods_with_custom_durations <- function(enriched_data) {
   get_input_local <- function(param, prompt_msg, validate_fn = function(x) TRUE,
                               transform_fn = function(x) x,
                               error_msg = "❌ Invalid input. Please try again.") {
-    if (!is.null(pipeline_inputs[[param]]) && !is.na(pipeline_inputs[[param]]) && pipeline_inputs[[param]] != "") {
+    if (!is.null(pipeline_inputs[[param]]) && 
+        !is.na(pipeline_inputs[[param]]) && 
+        pipeline_inputs[[param]] != "") {
       candidate <- transform_fn(pipeline_inputs[[param]])
       if (validate_fn(candidate)) {
         message("💾 Using pre-recorded input for '", param, "': ", candidate)
@@ -48,7 +54,7 @@ assign_periods_with_custom_durations <- function(enriched_data) {
   # Step 1: Define the sequence of periods.
   message("📋 Define your experimental period sequence (starting with 'acclimatation').")
   period_sequence_input <- get_input_local("period_sequence",
-                                           "❓ Enter the sequence of periods (comma-separated, e.g., acclimatation, light_1, dark_1,...): ",
+                                           "❓ Enter the sequence of periods (comma-separated, e.g., acclimatation, vibration_1, rest_1, vibration_2, rest_2, vibration_3, rest_3): ",
                                            validate_fn = function(x) {
                                              periods <- trimws(unlist(strsplit(as.character(x), ",")))
                                              length(periods) > 0 && ("acclimatation" %in% periods)
@@ -57,27 +63,58 @@ assign_periods_with_custom_durations <- function(enriched_data) {
   periods <- trimws(unlist(strsplit(period_sequence_input, ",")))
   message("✔️ Period sequence recorded: ", paste(periods, collapse = ", "))
   
-  # Step 2: Define period boundaries.
+  # Step 2: Define period boundaries (in seconds) for each transition.
   message("🛠️ Define period boundaries (time codes in seconds) for each transition.")
   boundaries_input <- get_input_local("period_boundaries",
                                       sprintf("❓ Enter %d time codes (comma-separated): ", length(periods) - 1),
                                       validate_fn = function(x) {
                                         boundaries <- as.numeric(trimws(unlist(strsplit(as.character(x), ","))))
-                                        length(boundaries) == length(periods) - 1 && all(!is.na(boundaries)) && all(boundaries > 0)
+                                        length(boundaries) == (length(periods) - 1) && all(!is.na(boundaries)) && all(boundaries > 0)
                                       },
                                       transform_fn = function(x) as.numeric(trimws(unlist(strsplit(as.character(x), ",")))),
                                       error_msg = sprintf("❌ Please enter %d positive numeric time codes separated by commas.", length(periods) - 1))
-  period_boundaries <- boundaries_input / 60  # Convert seconds to minutes
-  message("✔️ Period boundaries recorded (in minutes): ", paste(period_boundaries, collapse = ", "))
+  message("✔️ Period boundaries recorded (in seconds): ", paste(boundaries_input, collapse = ", "))
+  
+  # Compute durations (in seconds) for periods 1 to n-1:
+  durations <- numeric(length(periods))
+  durations[1] <- boundaries_input[1]  # Duration of first period
+  if (length(periods) > 1 && length(boundaries_input) >= 2) {
+    for (i in 2:(length(periods) - 1)) {
+      durations[i] <- boundaries_input[i] - boundaries_input[i - 1]
+    }
+  }
+  # Note: The last period is open-ended and not assigned a duration.
+  
+  # Step 3: Retrieve the integration period from the data's "period" column.
+  integration_period <- as.numeric(unique(enriched_data$period))
+  if (length(integration_period) > 1) {
+    message("⚠️ Warning: Multiple integration period values found. Using the first: ", integration_period[1])
+    integration_period <- integration_period[1]
+  }
+  message("\n🔍 Integration period (minimum duration) extracted from data: ", integration_period, " seconds.\n")
+  
+  # Enforce that each defined period (except the last) is at least as long as the integration period.
+  durations[1:(length(periods) - 1)] <- pmax(durations[1:(length(periods) - 1)], integration_period)
+  
+  # Debug: Show computed (adjusted) durations.
+  message("🔍 Debug: Computed durations for each period (in seconds):")
+  print(data.frame(Period = periods[1:(length(periods) - 1)], Duration = durations[1:(length(periods) - 1)]))
+  
+  # Recompute boundaries using the adjusted durations.
+  new_boundaries <- cumsum(durations[1:(length(periods) - 1)])  # in seconds
+  period_boundaries <- new_boundaries / 60  # convert to minutes for storage/consistency
+  message("✔️ Adjusted period boundaries (in minutes): ", paste(period_boundaries, collapse = ", "))
   
   # Create associations.
   period_transitions <- paste(periods[-length(periods)], periods[-1], sep = "-")
   boundary_associations <- data.frame(boundary_time = period_boundaries, transition = period_transitions)
   
-  # Assign periods based on boundaries.
+  # Assign periods based on the adjusted boundaries.
   message("🛠️ Assigning periods based on 'start' time...")
   assign_period <- function(start_time_sec) {
+    # start_time_sec is in seconds.
     for (i in seq_along(period_boundaries)) {
+      # Compare against the adjusted boundary (converted back to seconds).
       if (start_time_sec < period_boundaries[i] * 60) return(periods[i])
     }
     return(periods[length(periods)])
@@ -85,12 +122,12 @@ assign_periods_with_custom_durations <- function(enriched_data) {
   enriched_data <- enriched_data %>% mutate(period_with_numbers = sapply(start, assign_period))
   message("✔️ Periods assigned successfully.")
   
-  # Create simplified period column.
+  # Create simplified period column (mapping vibration_*/rest_* to 'vibration' and 'rest').
   message("🛠️ Creating 'period_without_numbers' column...")
   enriched_data <- enriched_data %>% mutate(
     period_without_numbers = case_when(
-      str_detect(period_with_numbers, "^light") ~ "light",
-      str_detect(period_with_numbers, "^dark") ~ "dark",
+      str_detect(period_with_numbers, "^(vibration)") ~ "vibration",
+      str_detect(period_with_numbers, "^(rest)") ~ "rest",
       TRUE ~ period_with_numbers
     )
   )

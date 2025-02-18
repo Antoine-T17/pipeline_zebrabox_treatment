@@ -1,6 +1,6 @@
 # -----------------------------------------------------------
 # File: generate_plate_plan.R
-# Harmonized version of the generate_plate_plan function for vibration mode.
+# Harmonized version of the generate_plate_plan function for vibration lines.
 # This function assists in creating a new plate plan or loading an existing one.
 # It retrieves inputs (either pre-recorded or interactively) via a unified helper
 # and saves the resulting plate plan globally as 'plate_plan_df'.

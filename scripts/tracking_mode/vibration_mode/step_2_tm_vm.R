@@ -1,7 +1,8 @@
 # -----------------------------------------------------------
 # File: extract_data.R
 # -----------------------------------------------------------
-# Harmonized version of the extract_data function for vibration_mode.
+# Harmonized version of the extract_data function for vibration lines.
+# Harmonized version of the extract_data function.
 # This function locates, reads, and processes raw experimental data (supporting CSV and Excel).
 # It also standardizes numeric column conversion and saves the data globally as 'extracted_data_df'.
 # -----------------------------------------------------------

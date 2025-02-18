@@ -1,7 +1,8 @@
 # -----------------------------------------------------------
 # File: process_zones.R
 # -----------------------------------------------------------
-# Harmonized version of the process_zones function for vibration_mode.
+# Harmonized version of the process_zones function for vibration mode.
+# Harmonized version of the process_zones function.
 # This function processes experimental zones from enriched data.
 # It displays zone definitions, optionally shows a visual schema,
 # prompts for zone numbers, filters the data per zone, optionally calculates Zone 1,
@@ -21,7 +22,7 @@ process_zones <- function(enriched_data) {
   message("   - Zone 0: Outermost zone.")
   message("   - Zone 1: Between Zone 0 and Zone 2 (if applicable).")
   message("   - Zone 2: Innermost zone.\n")
-  message("ℹ️ See 'inputs/tracking_mode/vibration_mode/docs/schema_well_zones.jpg' for a visual schema.\n")
+  message("ℹ️ See 'inputs/tracking_mode/vibration_mode/docs/schema_vibration_zones.jpg' for a visual schema.\n")
   
   # Retrieve pre-recorded inputs from the global pipeline_inputs.
   pipeline_inputs <- get("pipeline_inputs", envir = .GlobalEnv)
@@ -61,7 +62,7 @@ process_zones <- function(enriched_data) {
                                          error_msg = "❌ Please enter 'yes' or 'no'.")
   if (zones_vizualisation %in% c("yes", "y")) {
     message("🖼️ Displaying zone visualization...")
-    img_path <- "inputs/tracking_mode/vibration_mode/docs/schema_well_zones.jpg"
+    img_path <- "inputs/tracking_mode/vibration_mode/docs/schema_vibration_zones.jpg"
     if (file.exists(img_path)) {
       if (interactive()) {
         utils::browseURL(img_path)

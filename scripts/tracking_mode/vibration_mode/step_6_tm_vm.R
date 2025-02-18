@@ -1,6 +1,8 @@
 # -----------------------------------------------------------
 # File: calculate_and_clean_zone_data.R
-# Harmonized version of the calculate_and_clean_zone_data function for vibration_mode.
+# -----------------------------------------------------------
+# Harmonized version of the calculate_and_clean_zone_data function for vibration mode.
+# Harmonized version of the calculate_and_clean_zone_data function.
 # This function processes each zone’s data by computing new variables,
 # converting the 'start' column to minutes (using a user-specified unit),
 # filtering out the last minute, reordering columns, and combining all zones.

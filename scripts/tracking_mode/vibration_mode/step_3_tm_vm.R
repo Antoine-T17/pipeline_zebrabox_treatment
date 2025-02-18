@@ -1,7 +1,8 @@
 # -----------------------------------------------------------
 # File: import_and_process_data.R
 # -----------------------------------------------------------
-# Harmonized version of the import_and_process_data function for vibration_mode.
+# Harmonized version of the import_and_process_data function for vibration mode.
+# Harmonized version of the import_and_process_data function.
 # This function enriches experimental data using a plate plan by matching wells,
 # and if needed, generating additional grouping/tagging columns.
 # The enriched data is saved globally as 'enriched_data_df'.
@@ -49,9 +50,9 @@ import_and_process_data <- function(data, plate_plan) {
   # Generate condition_tagged if missing.
   if (!"condition_tagged" %in% colnames(plate_plan)) {
     message("🛠️ Generating 'condition_tagged' based on 'condition_grouped'...")
-    plate_plan <- plate_plan %>%
-      group_by(condition_grouped) %>%
-      mutate(condition_tagged = ifelse(condition == "X", "X", paste0(condition_grouped, "_", row_number()))) %>%
+    plate_plan <- plate_plan %>% 
+      group_by(condition_grouped) %>% 
+      mutate(condition_tagged = ifelse(condition == "X", "X", paste0(condition_grouped, "_", row_number()))) %>% 
       ungroup()
     message("✔️ 'condition_tagged' generated.")
   }
