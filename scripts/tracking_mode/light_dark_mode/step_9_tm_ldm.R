@@ -204,7 +204,7 @@ generate_and_save_boxplots_with_excel_files <- function(input_data = get("pretre
                            color = if (theme_name == "light") "black" else "white") +
               geom_point(shape = 21, 
                          position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.2),
-                         size = 1.5, alpha = 0.6,
+                         size = 1.75, alpha = 0.6,
                          color = if (theme_name == "light") "black" else "white") +
               facet_wrap(~period_without_numbers, scales = "free_x") +
               labs(x = "Conditions", y = sprintf("%s (Zone %s)", response_var, zone_number), fill = "Condition") +

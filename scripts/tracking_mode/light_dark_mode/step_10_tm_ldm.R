@@ -245,11 +245,98 @@ generate_and_save_boxplots_delta_with_excel_files <- function(input_data = get("
   }
   
   # Step 9: Generate pairwise percentage differences and write Excel file.
-  percentage_diff_results <- list()
+  # -------------------------------
+  # Momentum Comparisons: Compare momentum phases for each condition and zone
+  # -------------------------------
+  percentage_diff_results_momentum <- list()
   for (response_var in grep("^mean_", colnames(boxplot_data), value = TRUE)) {
-    message(sprintf("📊 Calculating percentage differences for %s...", response_var))
-    results <- boxplot_data %>% group_by(period_without_numbers, zone) %>% 
-      nest() %>% mutate(
+    message(sprintf("📊 Calculating momentum percentage differences for %s...", response_var))
+    results_momentum <- boxplot_data %>% 
+      group_by(condition_grouped, zone) %>%  # Group by condition and zone
+      nest() %>% 
+      mutate(
+        comparison_results = map(data, function(df) {
+          # Define specific momentum comparisons: before-switch, switch-after, before-after
+          momentum_pairs <- list(
+            c("before", "switch"),
+            c("switch", "after"),
+            c("before", "after")
+          )
+          map_dfr(momentum_pairs, function(pair) {
+            m1 <- df %>% filter(momentum == pair[1])
+            m2 <- df %>% filter(momentum == pair[2])
+            if (nrow(m1) > 0 && nrow(m2) > 0) {
+              tibble(
+                momentum_comparison = paste(pair[1], pair[2], sep = "-"),
+                mean_value_1 = round(mean(m1[[response_var]], na.rm = TRUE), 2),
+                mean_value_2 = round(mean(m2[[response_var]], na.rm = TRUE), 2),
+                median_value_1 = round(median(m1[[response_var]], na.rm = TRUE), 2),
+                median_value_2 = round(median(m2[[response_var]], na.rm = TRUE), 2),
+                mean_diff_pct = round((mean(m2[[response_var]], na.rm = TRUE) - mean(m1[[response_var]], na.rm = TRUE)) /
+                                        abs(mean(m1[[response_var]], na.rm = TRUE)) * 100, 2),
+                median_diff_pct = round((median(m2[[response_var]], na.rm = TRUE) - median(m1[[response_var]], na.rm = TRUE)) /
+                                          abs(median(m1[[response_var]], na.rm = TRUE)) * 100, 2)
+              )
+            } else {
+              tibble()
+            }
+          })
+        })
+      ) %>% 
+      select(-data) %>% 
+      unnest(comparison_results)
+    
+    percentage_diff_results_momentum[[response_var]] <- results_momentum
+  }
+  
+  # Write Momentum Comparisons Excel file
+  excel_file_momentum <- file.path(excel_output_dir, "delta_percentage_differences_momentum.xlsx")
+  wb_momentum <- createWorkbook()
+  for (response_var in names(percentage_diff_results_momentum)) {
+    addWorksheet(wb_momentum, response_var)
+    writeData(wb_momentum, response_var, percentage_diff_results_momentum[[response_var]])
+    
+    # Apply conditional formatting for mean_diff_pct
+    mean_diff_col <- which(names(percentage_diff_results_momentum[[response_var]]) == "mean_diff_pct")
+    if (length(mean_diff_col) > 0) {
+      conditionalFormatting(wb_momentum, sheet = response_var, cols = mean_diff_col,
+                            rows = 2:(nrow(percentage_diff_results_momentum[[response_var]]) + 1),
+                            rule = ">0", style = createStyle(bgFill = "#b9ffb2"))
+      conditionalFormatting(wb_momentum, sheet = response_var, cols = mean_diff_col,
+                            rows = 2:(nrow(percentage_diff_results_momentum[[response_var]]) + 1),
+                            rule = "<0", style = createStyle(bgFill = "#ffb2b2"))
+    }
+    
+    # Apply conditional formatting for median_diff_pct
+    median_diff_col <- which(names(percentage_diff_results_momentum[[response_var]]) == "median_diff_pct")
+    if (length(median_diff_col) > 0) {
+      conditionalFormatting(wb_momentum, sheet = response_var, cols = median_diff_col,
+                            rows = 2:(nrow(percentage_diff_results_momentum[[response_var]]) + 1),
+                            rule = ">0", style = createStyle(bgFill = "#b9ffb2"))
+      conditionalFormatting(wb_momentum, sheet = response_var, cols = median_diff_col,
+                            rows = 2:(nrow(percentage_diff_results_momentum[[response_var]]) + 1),
+                            rule = "<0", style = createStyle(bgFill = "#ffb2b2"))
+    }
+  }
+  
+  tryCatch({
+    saveWorkbook(wb_momentum, excel_file_momentum, overwrite = TRUE)
+  }, error = function(e) {
+    message("❌ Error saving Momentum Excel workbook: ", e$message)
+  })
+  message(sprintf("🎉 Momentum delta pairwise differences written to %s!\n", excel_file_momentum))
+  
+  
+  # -------------------------------
+  # Condition Comparisons: Original pairwise comparisons across conditions within each momentum and zone
+  # -------------------------------
+  percentage_diff_results_condition <- list()
+  for (response_var in grep("^mean_", colnames(boxplot_data), value = TRUE)) {
+    message(sprintf("📊 Calculating condition percentage differences for %s...", response_var))
+    results_condition <- boxplot_data %>% 
+      group_by(momentum, zone) %>% 
+      nest() %>% 
+      mutate(
         comparison_results = map(data, function(df) {
           condition_pairs <- combn(unique(df$condition_grouped), 2, simplify = FALSE)
           map_dfr(condition_pairs, function(pair) {
@@ -272,40 +359,48 @@ generate_and_save_boxplots_delta_with_excel_files <- function(input_data = get("
             }
           })
         })
-      ) %>% select(-data) %>% unnest(comparison_results)
+      ) %>% 
+      select(-data) %>% 
+      unnest(comparison_results)
     
-    percentage_diff_results[[response_var]] <- results
+    percentage_diff_results_condition[[response_var]] <- results_condition
   }
   
-  excel_file <- file.path(excel_output_dir, "delta_percentage_differences_pairwise.xlsx")
-  wb <- createWorkbook()
-  for (response_var in names(percentage_diff_results)) {
-    addWorksheet(wb, response_var)
-    writeData(wb, response_var, percentage_diff_results[[response_var]])
-    mean_diff_col <- which(names(percentage_diff_results[[response_var]]) == "mean_diff_pct")
-    median_diff_col <- which(names(percentage_diff_results[[response_var]]) == "median_diff_pct")
+  # Write Condition Comparisons Excel file
+  excel_file_condition <- file.path(excel_output_dir, "delta_percentage_differences_condition.xlsx")
+  wb_condition <- createWorkbook()
+  for (response_var in names(percentage_diff_results_condition)) {
+    addWorksheet(wb_condition, response_var)
+    writeData(wb_condition, response_var, percentage_diff_results_condition[[response_var]])
+    
+    # Apply conditional formatting for mean_diff_pct
+    mean_diff_col <- which(names(percentage_diff_results_condition[[response_var]]) == "mean_diff_pct")
     if (length(mean_diff_col) > 0) {
-      conditionalFormatting(wb, sheet = response_var, cols = mean_diff_col,
-                            rows = 2:(nrow(percentage_diff_results[[response_var]]) + 1),
+      conditionalFormatting(wb_condition, sheet = response_var, cols = mean_diff_col,
+                            rows = 2:(nrow(percentage_diff_results_condition[[response_var]]) + 1),
                             rule = ">0", style = createStyle(bgFill = "#b9ffb2"))
-      conditionalFormatting(wb, sheet = response_var, cols = mean_diff_col,
-                            rows = 2:(nrow(percentage_diff_results[[response_var]]) + 1),
+      conditionalFormatting(wb_condition, sheet = response_var, cols = mean_diff_col,
+                            rows = 2:(nrow(percentage_diff_results_condition[[response_var]]) + 1),
                             rule = "<0", style = createStyle(bgFill = "#ffb2b2"))
     }
+    
+    # Apply conditional formatting for median_diff_pct
+    median_diff_col <- which(names(percentage_diff_results_condition[[response_var]]) == "median_diff_pct")
     if (length(median_diff_col) > 0) {
-      conditionalFormatting(wb, sheet = response_var, cols = median_diff_col,
-                            rows = 2:(nrow(percentage_diff_results[[response_var]]) + 1),
+      conditionalFormatting(wb_condition, sheet = response_var, cols = median_diff_col,
+                            rows = 2:(nrow(percentage_diff_results_condition[[response_var]]) + 1),
                             rule = ">0", style = createStyle(bgFill = "#b9ffb2"))
-      conditionalFormatting(wb, sheet = response_var, cols = median_diff_col,
-                            rows = 2:(nrow(percentage_diff_results[[response_var]]) + 1),
+      conditionalFormatting(wb_condition, sheet = response_var, cols = median_diff_col,
+                            rows = 2:(nrow(percentage_diff_results_condition[[response_var]]) + 1),
                             rule = "<0", style = createStyle(bgFill = "#ffb2b2"))
     }
   }
   
   tryCatch({
-    saveWorkbook(wb, excel_file, overwrite = TRUE)
+    saveWorkbook(wb_condition, excel_file_condition, overwrite = TRUE)
   }, error = function(e) {
-    message("❌ Error saving Excel workbook: ", e$message)
+    message("❌ Error saving Condition Excel workbook: ", e$message)
   })
-  message(sprintf("🎉 Delta pairwise differences written to %s!\n", excel_file))
+  message(sprintf("🎉 Condition delta pairwise differences written to %s!\n", excel_file_condition))
+  
 }
