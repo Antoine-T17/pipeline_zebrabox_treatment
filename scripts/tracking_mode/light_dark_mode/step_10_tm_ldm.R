@@ -248,9 +248,9 @@ generate_and_save_boxplots_delta_with_excel_files <- function(input_data = get("
   }
   
   # Step 12: Generate pairwise percentage differences (Momentum Comparisons).
-  message("📊 Calculating momentum percentage differences...")
   percentage_diff_results_momentum <- list()
   for (response_var in grep("^mean_", colnames(boxplot_data), value = TRUE)) {
+    message("📊 Calculating momentum percentage differences...")
     results_momentum <- boxplot_data %>% 
       group_by(condition_grouped, zone) %>%  
       nest() %>% 
@@ -323,9 +323,9 @@ generate_and_save_boxplots_delta_with_excel_files <- function(input_data = get("
   message(sprintf("🎉 Momentum delta pairwise differences written to %s!\n", excel_file_momentum))
   
   # Step 14: Generate condition comparisons.
-  message("📊 Calculating condition percentage differences...")
   percentage_diff_results_condition <- list()
   for (response_var in grep("^mean_", colnames(boxplot_data), value = TRUE)) {
+    message("📊 Calculating condition percentage differences...")
     results_condition <- boxplot_data %>% 
       group_by(momentum, zone) %>% 
       nest() %>% 
