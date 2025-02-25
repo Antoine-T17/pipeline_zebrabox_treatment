@@ -63,16 +63,27 @@ pre_visualization_data_treatment <- function(zone_combined_data) {
   available_conditions <- unique(zone_combined_data$condition)
   available_condition_grouped <- unique(zone_combined_data$condition_grouped)
   
+  # Print available options to guide your input
+  message("✅ Available conditions: ", paste(available_conditions, collapse = ", "))
+  message("✅ Available condition_grouped: ", paste(available_condition_grouped, collapse = ", "))
+  
   condition_order <- get_input_local("conditions_order",
                                      "❓ Enter the desired order of conditions (comma-separated): ",
                                      validate_fn = function(x) {
                                        orders <- split_and_trim(x)
                                        missing_items <- setdiff(available_conditions, orders)
                                        invalid_items <- setdiff(orders, available_conditions)
+                                       if (length(missing_items) > 0) {
+                                         message("⚠️ Missing conditions: ", paste(missing_items, collapse = ", "))
+                                       }
+                                       if (length(invalid_items) > 0) {
+                                         message("⚠️ Invalid conditions: ", paste(invalid_items, collapse = ", "))
+                                       }
                                        length(missing_items) == 0 && length(invalid_items) == 0
                                      },
                                      transform_fn = split_and_trim)
   message("✔️ Condition order set: ", paste(condition_order, collapse = ", "))
+  
   
   condition_grouped_order <- get_input_local("conditions_grouped_order",
                                              "❓ Enter the desired order of condition_grouped (comma-separated): ",
