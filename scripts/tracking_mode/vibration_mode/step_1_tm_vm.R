@@ -2,9 +2,10 @@
 # primary mode : tracking mode
 # secondary mode : vibration mode
 # Function: generate_plate_plan
-# Purpose: Creates or loads a multi-well plate plan for vibration mode experiments.
-# It prompts for required inputs (or uses pre-recorded values) to either generate
-# a new randomized plate plan or load an existing one, saving the result globally as 'plate_plan_df'.
+# Purpose: Creates or loads one or more multi-well plate plans for light/dark mode experiments.
+#          If in creation mode, a new plate plan is generated (for one plate; see note).
+#          In load mode, multiple plate plan file names may be provided separated by ";".
+#          The resulting plate plan(s) are stored globally as 'plate_plan_df_list'.
 # -----------------------------------------------------------
 generate_plate_plan <- function(plan_dir = "inputs/tracking_mode/vibration_mode/plate_plan") {
   # Step 1: Ensure the plate plan directory exists
@@ -15,12 +16,12 @@ generate_plate_plan <- function(plan_dir = "inputs/tracking_mode/vibration_mode/
   
   # Step 2: Display the welcome message with bullet points
   message("\n---\n")
-  message("👋 Welcome to the Multi-Well Plate Plan Generator!")
+  message("👋 Welcome to the Plate Plan Generator!")
   message("📋 This function will help you:")
-  message("   • Create a new plate plan or load an existing one.")
+  message("   • Create a new plate plan or load existing one(s).")
   message("   • Randomize well assignments for new plans.")
   message("   • Work with both '.csv' and '.xlsx' file formats.")
-  message("   • Save the plate plan for later use.\n")
+  message("   • Save the plate plan(s) for later use.\n")
   
   # Step 3: Retrieve pre-recorded pipeline inputs from the global environment
   pipeline_inputs <- get("pipeline_inputs", envir = .GlobalEnv)
@@ -53,16 +54,14 @@ generate_plate_plan <- function(plan_dir = "inputs/tracking_mode/vibration_mode/
     }
   }
   
-  # Step 5: Begin Plate Plan Setup by asking whether to create a new plan or load an existing one
+  # Step 5: Ask whether to create a new plan or load existing plan(s)
   create_plan <- get_input_local("create_plate_plan",
                                  "❓ Do you want to create a new plate plan? (yes/no): ",
                                  validate_fn = function(x) tolower(x) %in% c("yes", "y", "no", "n"),
                                  transform_fn = function(x) tolower(trimws(x)),
                                  error_msg = "❌ Please enter 'yes' or 'no'.")
-  plate_plan <- NULL
-  plate_plan_name <- NULL
+  plate_plan_list <- list()  # will hold one or more plate plan dataframes
   
-  # Step 6: If creating a new plate plan, gather inputs and generate the plan
   if (create_plan %in% c("yes", "y")) {
     # 6.1: Get plate type (24, 48, or 96 wells)
     plate_type <- get_input_local("plate_type",
@@ -158,53 +157,55 @@ generate_plate_plan <- function(plan_dir = "inputs/tracking_mode/vibration_mode/
     openxlsx::write.xlsx(plate_plan, file = xlsx_path, rowNames = FALSE)
     message("💾 Plate plan saved as Excel file: ", xlsx_path)
     
+    # In creation mode, we assume a single plate plan is generated; wrap in a list.
+    plate_plan_list[[1]] <- plate_plan
+    
   } else {
-    # Step 7: Load an existing plate plan by validating the provided file name and reading the file
-    plate_plan_name <- get_input_local("plate_plan_name",
-                                       "❓ Enter the existing plate plan file name (with .csv or .xlsx extension): ",
-                                       validate_fn = function(x) {
-                                         x != "" && grepl("\\.csv$|\\.xlsx$", x, ignore.case = TRUE) &&
-                                           file.exists(file.path(plan_dir, x))
-                                       },
-                                       transform_fn = function(x) trimws(x),
-                                       error_msg = "❌ File does not exist or invalid name.")
-    file_extension <- tolower(tools::file_ext(plate_plan_name))
-    selected_plan_path <- file.path(plan_dir, plate_plan_name)
-    
-    plate_plan <- tryCatch({
-      if (file_extension == "csv") {
-        message("🔍 Reading plate plan from CSV...")
-        read.csv2(selected_plan_path, sep = ";", dec = ".", header = TRUE, stringsAsFactors = FALSE)
-      } else if (file_extension == "xlsx") {
-        message("🔍 Reading plate plan from Excel...")
-        readxl::read_excel(selected_plan_path, sheet = 1, col_names = TRUE)
-      } else {
-        stop("❌ Unsupported file format.")
+    # Step 7: Load one or more existing plate plan file(s)
+    plate_plan_names <- get_input_local("plate_plan_name",
+                                        "❓ Enter the existing plate plan file name(s) separated by ';' (with .csv or .xlsx extension): ",
+                                        validate_fn = function(x) {
+                                          files <- trimws(unlist(strsplit(x, ";")))
+                                          all(sapply(files, function(f) f != "" && grepl("\\.csv$|\\.xlsx$", f, ignore.case = TRUE) &&
+                                                       file.exists(file.path(plan_dir, f))))
+                                        },
+                                        transform_fn = function(x) trimws(x),
+                                        error_msg = "❌ One or more file names do not exist or are invalid.")
+    # Split by ";" to support multiple plates
+    file_names <- trimws(unlist(strsplit(plate_plan_names, ";")))
+    for (f in file_names) {
+      file_extension <- tolower(tools::file_ext(f))
+      selected_plan_path <- file.path(plan_dir, f)
+      plan_df <- tryCatch({
+        if (file_extension == "csv") {
+          message("🔍 Reading plate plan from CSV: ", f)
+          read.csv2(selected_plan_path, sep = ";", dec = ".", header = TRUE, stringsAsFactors = FALSE)
+        } else if (file_extension == "xlsx") {
+          message("🔍 Reading plate plan from Excel: ", f)
+          readxl::read_excel(selected_plan_path, sheet = 1, col_names = TRUE)
+        } else {
+          stop("❌ Unsupported file format.")
+        }
+      }, error = function(e) {
+        stop("❌ Error loading the plate plan file ", f, ": ", e$message)
+      })
+      if (!all(c("animal", "condition") %in% colnames(plan_df))) {
+        stop("❌ Plate plan ", f, " is missing required columns: 'animal' and 'condition'.")
       }
-    }, error = function(e) {
-      stop("❌ Error loading the plate plan file: ", e$message)
-    })
-    
-    if (!all(c("animal", "condition") %in% colnames(plate_plan))) {
-      stop("❌ Plate plan is missing required columns: 'animal' and 'condition'.")
-    }
-    message("✔️ Plate plan loaded and validated successfully!")
-    
-    # 7.1: Save the loaded plan back to its original file in its respective format
-    if (file_extension == "csv") {
-      csv_path <- file.path(plan_dir, plate_plan_name)
-      write.csv2(plate_plan, file = csv_path, row.names = FALSE)
-      message("💾 Plate plan saved as CSV: ", csv_path)
-    } else if (file_extension == "xlsx") {
-      xlsx_path <- file.path(plan_dir, plate_plan_name)
-      openxlsx::write.xlsx(plate_plan, file = xlsx_path, rowNames = FALSE)
-      message("💾 Plate plan saved as Excel file: ", xlsx_path)
+      message("✔️ Plate plan ", f, " loaded and validated successfully.")
+      # Save back in original format
+      if (file_extension == "csv") {
+        write.csv2(plan_df, file = selected_plan_path, row.names = FALSE)
+      } else {
+        openxlsx::write.xlsx(plan_df, file = selected_plan_path, rowNames = FALSE)
+      }
+      plate_plan_list[[length(plate_plan_list) + 1]] <- plan_df
     }
   }
   
-  # Step 8: Finalize by assigning the plate plan globally and returning it
+  # Step 8: Finalize and assign the plate plan list globally, then return it.
   message("🎉 Plate plan generation completed!")
-  message("💾 Plate plan is now available globally as 'plate_plan_df'.\n")
-  assign("plate_plan_df", plate_plan, envir = .GlobalEnv)
-  return(plate_plan)
+  message("💾 Plate plan(s) are now available globally as 'plate_plan_df_list'.\n")
+  assign("plate_plan_df_list", plate_plan_list, envir = .GlobalEnv)
+  return(plate_plan_list)
 }

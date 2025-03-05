@@ -1,6 +1,6 @@
 # -----------------------------------------------------------
 # primary mode : tracking mode
-# secondary mode : light_dark mode
+# secondary mode : light dark mode
 # Function: generate_and_save_boxplots_with_excel_files
 # Purpose: Generates boxplots from pretreated boxplot data, validates the data structure,
 #          manages colors and themes, saves plots in PNG and interactive HTML formats,

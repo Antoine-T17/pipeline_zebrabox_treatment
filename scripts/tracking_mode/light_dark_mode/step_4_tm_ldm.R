@@ -11,7 +11,7 @@
 # -----------------------------------------------------------
 assign_periods_with_custom_durations <- function(enriched_data_list) {
   message("\n---\n")
-  message("👋 Welcome to the Custom Period Assignment Process (Light/Dark Mode)!")
+  message("👋 Welcome to the Custom Period Assignment Process!")
   message("📋 This function will help you:")
   message("   • Define your universal experimental period sequence and boundaries.")
   message("   • Assign each data row a period based on its 'start' time.")

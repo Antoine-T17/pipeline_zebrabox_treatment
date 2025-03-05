@@ -1,6 +1,6 @@
 # -----------------------------------------------------------
 # primary mode : tracking mode
-# secondary mode : light_dark mode
+# secondary mode : vibration mode
 # Function: calculate_and_clean_zone_data
 # Purpose: Processes each zone’s data by computing new variables,
 #          converting the 'start' column to minutes (using a universal unit),

@@ -198,7 +198,7 @@ generate_and_save_boxplots_with_excel_files <- function(input_data = get("pretre
           for (theme_name in c("light", "dark")) {
             current_theme <- if (theme_name == "light") light_theme() else dark_theme()
             
-            # Generate static PNG plot.
+            # Generate static PNG version.
             p_png <- ggplot(zone_data, aes(x = condition_grouped, y = .data[[response_var]], fill = condition_grouped)) +
               geom_boxplot(outlier.shape = NA, alpha = 0.6,
                            color = if (theme_name == "light") "black" else "white") +
@@ -211,7 +211,7 @@ generate_and_save_boxplots_with_excel_files <- function(input_data = get("pretre
                 get("custom_colors_global", envir = .GlobalEnv) else colors) +
               current_theme
             
-            # Generate interactive HTML plot.
+            # Generate interactive HTML version with tooltips.
             p_html <- ggplot(zone_data, aes(x = condition_grouped, y = .data[[response_var]], fill = condition_grouped,
                                             text = paste("Condition Grouped:", condition_grouped,
                                                          "<br>Condition Tagged:", condition_tagged,
@@ -276,9 +276,9 @@ generate_and_save_boxplots_with_excel_files <- function(input_data = get("pretre
                   mean_value_2 = round(mean(cond2[[response_var]], na.rm = TRUE), 2),
                   median_value_1 = round(median(cond1[[response_var]], na.rm = TRUE), 2),
                   median_value_2 = round(median(cond2[[response_var]], na.rm = TRUE), 2),
-                  mean_diff_pct = round((mean(cond2[[response_var]], na.rm = TRUE) - mean(cond1[[response_var]], na.rm = TRUE)) /
+                  mean_diff_pct = round((mean(cond2[[response_var]], na.rm = TRUE) - mean(cond1[[response_var]], na.rm = TRUE)) / 
                                           abs(mean(cond1[[response_var]], na.rm = TRUE)) * 100, 2),
-                  median_diff_pct = round((median(cond2[[response_var]], na.rm = TRUE) - median(cond1[[response_var]], na.rm = TRUE)) /
+                  median_diff_pct = round((median(cond2[[response_var]], na.rm = TRUE) - median(cond1[[response_var]], na.rm = TRUE)) / 
                                             abs(median(cond1[[response_var]], na.rm = TRUE)) * 100, 2)
                 )
               } else {

@@ -1,4 +1,6 @@
 # -----------------------------------------------------------
+# primary mode : tracking mode
+# secondary mode : light dark mode
 # Function: generate_and_save_lineplots
 # Purpose: Generates line plots from pretreated line plot data.
 #          It validates the data structure, manages colors and themes,

@@ -3,29 +3,29 @@
 # secondary mode : vibration mode
 # Function: assign_periods_with_custom_durations
 # Purpose: Assigns experimental periods based on user-defined boundaries.
-#          It prompts for a period sequence and boundaries, computes durations
-#          (ensuring a minimum equal to the integration period), snaps boundaries
-#          to the nearest multiple of the integration period, and assigns periods.
-#          The full period sequence and adjusted boundaries are saved globally.
+#          Prompts for a universal period sequence and boundaries (not per plate),
+#          computes durations, snaps boundaries to the nearest multiple of the integration period,
+#          and assigns periods to each plate's enriched data.
+#          Global outputs: 'data_with_periods_df_list', 'period_boundaries_list',
+#          'boundary_associations_list', and 'boundary_associations'.
 # -----------------------------------------------------------
-assign_periods_with_custom_durations <- function(enriched_data) {
-  # Step 1: Display welcome message with bullet points
+assign_periods_with_custom_durations <- function(enriched_data_list) {
   message("\n---\n")
   message("👋 Welcome to the Custom Period Assignment Process!")
   message("📋 This function will help you:")
-  message("   • Define your experimental period sequence and boundaries.")
+  message("   • Define your universal experimental period sequence and boundaries.")
   message("   • Assign each data row a period based on its 'start' time.")
   message("   • Create a simplified period column (without numeric tags).")
-  message("   • Save the updated data and associations globally.\n")
+  message("   • Save the updated data globally as 'data_with_periods_df_list'.\n")
   
-  # Step 2: Retrieve pre-recorded inputs from the global pipeline_inputs
   pipeline_inputs <- get("pipeline_inputs", envir = .GlobalEnv)
   
-  # Step 3: Define a helper function to obtain and validate user inputs
+  # Define unified input helper.
   get_input_local <- function(param, prompt_msg, validate_fn = function(x) TRUE,
                               transform_fn = function(x) x,
                               error_msg = "❌ Invalid input. Please try again.") {
-    if (!is.null(pipeline_inputs[[param]]) && !is.na(pipeline_inputs[[param]]) && pipeline_inputs[[param]] != "") {
+    if (!is.null(pipeline_inputs[[param]]) && !is.na(pipeline_inputs[[param]]) &&
+        pipeline_inputs[[param]] != "") {
       candidate <- transform_fn(pipeline_inputs[[param]])
       if (validate_fn(candidate)) {
         message("💾 Using pre-recorded input for '", param, "': ", candidate)
@@ -48,91 +48,102 @@ assign_periods_with_custom_durations <- function(enriched_data) {
     }
   }
   
-  # Step 4: Prompt user to define the experimental period sequence
-  message("📋 Define your experimental period sequence (starting with 'acclimatation').")
+  # ----- Universal Period Sequence -----
   period_sequence_input <- get_input_local("period_sequence",
-                                           "❓ Enter the sequence of periods (comma-separated, e.g., acclimatation, vibration_1, rest_1, vibration_2, rest_2, vibration_3, rest_3): ",
+                                           "❓ Enter the universal sequence of periods (comma-separated, e.g., acclimatation, vibration, rest, vibration, rest): ",
                                            validate_fn = function(x) {
                                              periods <- trimws(unlist(strsplit(as.character(x), ",")))
-                                             length(periods) > 0 && ("acclimatation" %in% periods)
+                                             length(periods) > 0
                                            },
                                            transform_fn = function(x) trimws(as.character(x)))
   periods <- trimws(unlist(strsplit(period_sequence_input, ",")))
-  message("✔️ Period sequence recorded: ", paste(periods, collapse = ", "))
-  
-  # Save the full period sequence globally for downstream functions.
+  message("✔️ Universal period sequence recorded: ", paste(periods, collapse = ", "))
   assign("all_periods", periods, envir = .GlobalEnv)
   
-  # Step 5: Prompt user to define period boundaries (time codes in seconds)
-  message("🛠️ Define period boundaries (time codes in seconds) for each transition.")
+  # ----- Universal Period Boundaries -----
   boundaries_input <- get_input_local("period_boundaries",
-                                      sprintf("❓ Enter %d time codes (comma-separated): ", length(periods) - 1),
+                                      sprintf("❓ Enter %d time codes (comma-separated) for the universal period boundaries (in seconds): ", length(periods) - 1),
                                       validate_fn = function(x) {
                                         boundaries <- as.numeric(trimws(unlist(strsplit(as.character(x), ","))))
                                         length(boundaries) == (length(periods) - 1) && all(!is.na(boundaries)) && all(boundaries > 0)
                                       },
                                       transform_fn = function(x) as.numeric(trimws(unlist(strsplit(as.character(x), ",")))),
                                       error_msg = sprintf("❌ Please enter %d positive numeric time codes separated by commas.", length(periods) - 1))
-  message("✔️ Period boundaries recorded (in seconds): ", paste(boundaries_input, collapse = ", "))
+  message("✔️ Universal period boundaries recorded (in seconds): ", paste(boundaries_input, collapse = ", "))
   
-  # Step 6: Compute durations for periods (except the last which is open-ended)
-  durations <- numeric(length(periods))
-  durations[1] <- boundaries_input[1]  # Duration of the first period
-  if (length(periods) > 1 && length(boundaries_input) >= 2) {
-    for (i in 2:(length(periods) - 1)) {
-      durations[i] <- boundaries_input[i] - boundaries_input[i - 1]
+  # Prepare lists to store outputs per plate.
+  data_with_periods_list <- list()
+  period_boundaries_list <- list()
+  boundary_associations_list <- list()
+  
+  # Process each plate's enriched data using the universal period sequence & boundaries.
+  for (i in seq_along(enriched_data_list)) {
+    edata <- enriched_data_list[[i]]
+    
+    durations <- numeric(length(periods))
+    durations[1] <- boundaries_input[1]  # Duration of the first period.
+    if (length(periods) > 1 && length(boundaries_input) >= 2) {
+      for (j in 2:(length(periods) - 1)) {
+        durations[j] <- boundaries_input[j] - boundaries_input[j - 1]
+      }
     }
-  }
-  
-  # Step 7: Retrieve integration period from data (minimum period duration)
-  integration_period <- as.numeric(unique(enriched_data$period))
-  if (length(integration_period) > 1) {
-    message("⚠️ Warning: Multiple integration period values found. Using the first: ", integration_period[1])
-    integration_period <- integration_period[1]
-  }
-  message("\n🔍 Integration period (minimum duration) extracted from data: ", integration_period, " seconds.\n")
-  
-  # Step 8: Ensure each period (except the last) is at least the integration period long
-  durations[1:(length(periods) - 1)] <- pmax(durations[1:(length(periods) - 1)], integration_period)
-  
-  # Step 9: Recompute boundaries from the adjusted durations and snap to integration period multiples
-  new_boundaries <- cumsum(durations[1:(length(periods) - 1)])  # in seconds
-  snapped_boundaries <- round(new_boundaries / integration_period) * integration_period
-  period_boundaries <- snapped_boundaries / 60  # convert seconds to minutes for storage
-  message("✔️ Adjusted (snapped) period boundaries (in minutes): ", paste(period_boundaries, collapse = ", "))
-  
-  # Step 10: Create associations between period transitions and boundaries
-  period_transitions <- paste(periods[-length(periods)], periods[-1], sep = "-")
-  boundary_associations <- data.frame(boundary_time = period_boundaries, transition = period_transitions)
-  
-  # Step 11: Assign periods based on the adjusted boundaries
-  message("🛠️ Assigning periods based on 'start' time...")
-  assign_period <- function(start_time_sec) {
-    for (i in seq_along(period_boundaries)) {
-      if (start_time_sec < period_boundaries[i] * 60) return(periods[i])
+    
+    # Retrieve integration period from data (assumed in column 'period').
+    integration_period <- as.numeric(unique(edata$period))
+    if (length(integration_period) > 1) {
+      message(sprintf("⚠️ Warning (plate %d): Multiple integration period values found. Using the first: %s", i, integration_period[1]))
+      integration_period <- integration_period[1]
     }
-    return(periods[length(periods)])
-  }
-  enriched_data <- enriched_data %>% mutate(period_with_numbers = sapply(start, assign_period))
-  message("✔️ Periods assigned successfully.")
-  
-  # Step 12: Create simplified period column by removing numeric tags
-  message("🛠️ Creating 'period_without_numbers' column...")
-  enriched_data <- enriched_data %>% mutate(
-    period_without_numbers = case_when(
-      str_detect(period_with_numbers, "^(vibration)") ~ "vibration",
-      str_detect(period_with_numbers, "^(rest)") ~ "rest",
-      TRUE ~ period_with_numbers
+    message(sprintf("\n🔍 Plate %d - Integration period (minimum duration) extracted from data: %s seconds.\n", i, integration_period))
+    
+    durations[1:(length(periods) - 1)] <- pmax(durations[1:(length(periods) - 1)], integration_period)
+    new_boundaries <- cumsum(durations[1:(length(periods) - 1)])
+    snapped_boundaries <- round(new_boundaries / integration_period) * integration_period
+    plate_boundaries <- snapped_boundaries / 60  # Converting seconds to minutes.
+    message(sprintf("✔️ Plate %d - Adjusted (snapped) period boundaries (in minutes): %s", i, paste(plate_boundaries, collapse = ", ")))
+    
+    period_transitions <- paste(periods[-length(periods)], periods[-1], sep = "-")
+    boundary_associations <- data.frame(boundary_time = plate_boundaries, transition = period_transitions)
+    
+    # Assign periods based on the adjusted boundaries.
+    message(sprintf("🛠️ Plate %d - Assigning periods based on 'start' time...", i))
+    assign_period <- function(start_time_sec) {
+      for (k in seq_along(plate_boundaries)) {
+        if (start_time_sec < plate_boundaries[k] * 60) return(periods[k])
+      }
+      return(periods[length(periods)])
+    }
+    edata <- edata %>% mutate(period_with_numbers = sapply(start, assign_period))
+    message(sprintf("✔️ Plate %d - Periods assigned successfully.", i))
+    
+    # Create simplified period column (removing numeric tags).
+    message(sprintf("🛠️ Plate %d - Creating 'period_without_numbers' column...", i))
+    edata <- edata %>% mutate(
+      period_without_numbers = case_when(
+        str_detect(period_with_numbers, "^(vibration)") ~ "vibration",
+        str_detect(period_with_numbers, "^(rest)") ~ "rest",
+        TRUE ~ period_with_numbers
+      )
     )
-  )
-  message("✔️ 'period_without_numbers' created.")
+    message(sprintf("✔️ Plate %d - 'period_without_numbers' created.", i))
+    
+    data_with_periods_list[[i]] <- edata
+    period_boundaries_list[[i]] <- plate_boundaries
+    boundary_associations_list[[i]] <- boundary_associations
+  }
   
-  # Step 13: Save results globally and return the enriched data
-  assign("boundary_associations", boundary_associations, envir = .GlobalEnv)
-  assign("data_with_periods_df", enriched_data, envir = .GlobalEnv)
-  assign("period_boundaries", period_boundaries, envir = .GlobalEnv)
-  message("🎉 Period assignment completed!")
-  message("💾 Results saved as 'data_with_periods_df', 'period_boundaries', 'boundary_associations', and 'all_periods'.\n")
+  # Create a universal boundary associations data frame.
+  # (Assumes that boundaries are consistent across plates; otherwise, the first plate's data is used.)
+  if (length(boundary_associations_list) > 0) {
+    boundary_associations <- boundary_associations_list[[1]]
+    assign("boundary_associations", boundary_associations, envir = .GlobalEnv)
+  }
   
-  return(enriched_data)
+  message("🎉 Period assignment completed for all plates!")
+  message("💾 Results saved globally as 'data_with_periods_df_list', 'period_boundaries_list', and 'boundary_associations_list'.\n")
+  assign("data_with_periods_df_list", data_with_periods_list, envir = .GlobalEnv)
+  assign("period_boundaries_list", period_boundaries_list, envir = .GlobalEnv)
+  assign("boundary_associations_list", boundary_associations_list, envir = .GlobalEnv)
+  
+  return(data_with_periods_list)
 }

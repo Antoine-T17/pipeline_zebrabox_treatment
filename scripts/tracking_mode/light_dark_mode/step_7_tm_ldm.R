@@ -1,4 +1,6 @@
 # -----------------------------------------------------------
+# primary mode : tracking mode
+# secondary mode : light dark mode
 # Function: pre_visualization_data_treatment
 # Purpose: Prepares data for visualization by performing three pretreatment steps:
 #          Part I – Lineplots: Remove unwanted conditions, suspect wells, response columns, etc.
@@ -21,7 +23,7 @@ pre_visualization_data_treatment <- function(zone_calculated_list) {
   }
   
   message("\n---\n")
-  message("👋 Welcome to the Data Pretreatment Process (Light/Dark Mode)!")
+  message("👋 Welcome to the Data Pretreatment Process!")
   message("📋 This function will help you:")
   message("   • Prepare data for visualization (lineplots, boxplots, delta boxplots).")
   message("   • Remove unwanted conditions and suspect wells, and reorder columns.")

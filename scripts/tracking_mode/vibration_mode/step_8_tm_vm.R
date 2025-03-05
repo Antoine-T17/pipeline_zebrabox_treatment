@@ -2,9 +2,10 @@
 # primary mode : tracking mode
 # secondary mode : vibration mode
 # Function: generate_and_save_lineplots
-# Purpose: Generates line plots from pretreated line plot data. It validates the data
-#          structure, manages colors and themes, and saves plots in both PNG and interactive
-#          HTML formats to specified directories. HTML plots are temporarily saved and then moved.
+# Purpose: Generates line plots from pretreated line plot data.
+#          It validates the data structure, manages colors and themes,
+#          and saves plots in both PNG and interactive HTML formats to specified directories.
+#          HTML plots are temporarily saved and then moved.
 # -----------------------------------------------------------
 generate_and_save_lineplots <- function(input_data = get("pretreated_data_for_lineplots_df", envir = .GlobalEnv),
                                         output_dir = "outputs/tracking_mode/vibration_mode/figures/lineplots") {
@@ -62,23 +63,7 @@ generate_and_save_lineplots <- function(input_data = get("pretreated_data_for_li
       return(invisible(NULL))
     }
     
-    # Step 4.5: Ask for desired output formats.
-    generate_lines_plots_html <- get_input_local("generate_lines_plots_html",
-                                                 "❓ Generate interactive HTML line plots? (yes/no): ",
-                                                 validate_fn = function(x) tolower(x) %in% c("yes", "y", "no", "n"),
-                                                 transform_fn = function(x) tolower(trimws(x)),
-                                                 error_msg = "❌ Please enter 'yes' or 'no'.")
-    generate_lines_plots_png <- get_input_local("generate_lines_plots_png",
-                                                "❓ Generate static PNG line plots? (yes/no): ",
-                                                validate_fn = function(x) tolower(x) %in% c("yes", "y", "no", "n"),
-                                                transform_fn = function(x) tolower(trimws(x)),
-                                                error_msg = "❌ Please enter 'yes' or 'no'.")
-    if (generate_lines_plots_html %in% c("no", "n") && generate_lines_plots_png %in% c("no", "n")) {
-      message("❌ No output format selected. Skipping lineplot generation.")
-      return(invisible(NULL))
-    }
-    
-    # Step 5: Validate input data structure.
+    # Step 5: Validate the input data structure.
     message("🔍 Validating input data structure...")
     if (!inherits(input_data, "data.frame")) {
       message("❌ input_data must be a data frame. Skipping lineplot generation.")
@@ -91,7 +76,7 @@ generate_and_save_lineplots <- function(input_data = get("pretreated_data_for_li
     }
     message("✔️ Data structure validated.")
     
-    # Step 6: Order conditions.
+    # Step 6: Order conditions using global ordering if available.
     if (exists("generated_condition_order", envir = .GlobalEnv)) {
       message("✔️ Ordering conditions using 'generated_condition_order'.")
       input_data$condition <- factor(input_data$condition, levels = get("generated_condition_order", envir = .GlobalEnv))
@@ -107,7 +92,7 @@ generate_and_save_lineplots <- function(input_data = get("pretreated_data_for_li
                                           transform_fn = function(x) tolower(trimws(x)),
                                           error_msg = "❌ Please enter 'yes' or 'no'.")
     if (keep_acclimatation %in% c("no", "n") && "period_with_numbers" %in% colnames(input_data)) {
-      input_data <- dplyr::filter(input_data, !grepl("acclimatation", period_with_numbers, ignore.case = TRUE))
+      input_data <- filter(input_data, !grepl("acclimatation", period_with_numbers, ignore.case = TRUE))
       message("✔️ Acclimatation period removed.")
     } else {
       message("✔️ Acclimatation period retained.")
@@ -117,7 +102,7 @@ generate_and_save_lineplots <- function(input_data = get("pretreated_data_for_li
     message("📁 Creating output directories for line plots...")
     html_dir <- file.path(output_dir, "html")
     png_dir  <- file.path(output_dir, "png")
-    temp_dir <- tempdir()
+    temp_dir <- tempdir()  # system temporary directory
     dir.create(png_dir, recursive = TRUE, showWarnings = FALSE)
     dir.create(html_dir, recursive = TRUE, showWarnings = FALSE)
     message("✔️ Output directories created.")
@@ -201,7 +186,7 @@ generate_and_save_lineplots <- function(input_data = get("pretreated_data_for_li
       )
     }
     
-    # Step 11: Prompt for output formats.
+    # Step 11: Prompt for desired output formats (only once here, after color management).
     generate_lines_plots_html <- get_input_local("generate_lines_plots_html",
                                                  "❓ Generate interactive HTML line plots? (yes/no): ",
                                                  validate_fn = function(x) tolower(x) %in% c("yes", "y", "no", "n"),
@@ -216,9 +201,21 @@ generate_and_save_lineplots <- function(input_data = get("pretreated_data_for_li
     # Step 12: Generate line plots.
     response_vars <- grep("^sum_", colnames(input_data), value = TRUE)
     message("⏳ Generating line plots... This may take a moment.")
+    
+    # Retrieve global boundary associations (a data frame with 'boundary_time' and 'transition')
+    boundary_associations <- get("boundary_associations", envir = .GlobalEnv)
+    if (is.null(boundary_associations)) {
+      stop("❌ Global 'boundary_associations' not found. Please run the period assignment function first.")
+    }
+    
+    # Prepare lists to hold plots.
+    lineplot_list <- list()
+    boxplot_list <- list()
+    delta_boxplot_list <- list()
+    
     for (response_var in response_vars) {
       for (zone_number in unique(input_data$zone)) {
-        zone_data <- dplyr::filter(input_data, zone == zone_number)
+        zone_data <- filter(input_data, zone == zone_number)
         if (!all(c("start_rounded", response_var) %in% colnames(zone_data))) {
           message(sprintf("⚠️ Missing columns for zone %s. Skipping...", zone_number))
           next
@@ -227,11 +224,11 @@ generate_and_save_lineplots <- function(input_data = get("pretreated_data_for_li
           current_theme <- if (theme_name == "light") light_theme() else dark_theme()
           
           # Generate static PNG plot.
-          p_png <- ggplot(zone_data, aes(x = start_rounded, y = .data[[response_var]], 
+          p_png <- ggplot(zone_data, aes(x = start_rounded, y = .data[[response_var]],
                                          color = condition, group = condition)) +
             geom_point(size = 2) +
-            geom_line(linewidth = 0.8) +
-            geom_vline(xintercept = period_boundaries, linetype = "dashed",
+            geom_line(size = 0.8) +
+            geom_vline(xintercept = boundary_associations$boundary_time, linetype = "dashed",
                        color = if (theme_name == "light") "black" else "white", alpha = 0.7) +
             labs(x = "Time (minutes)", y = sprintf("%s (Zone %s)", response_var, zone_number)) +
             current_theme
@@ -242,12 +239,13 @@ generate_and_save_lineplots <- function(input_data = get("pretreated_data_for_li
                                                        "<br>Value:", .data[[response_var]],
                                                        "<br>Condition:", condition))) +
             geom_point(aes(color = condition, group = condition), size = 2) +
-            geom_line(aes(color = condition, group = condition), linewidth = 0.8) +
-            geom_vline(xintercept = period_boundaries, linetype = "dashed",
+            geom_line(aes(color = condition, group = condition), size = 0.8) +
+            geom_vline(xintercept = boundary_associations$boundary_time, linetype = "dashed",
                        color = if (theme_name == "light") "black" else "white", alpha = 0.7) +
             labs(x = "Time (minutes)", y = sprintf("%s (Zone %s)", response_var, zone_number)) +
             current_theme
           
+          # Save PNG if selected.
           if (tolower(generate_lines_plots_png) %in% c("yes", "y")) {
             tryCatch({
               png_file <- file.path(png_dir, sprintf("plot_%s_zone_%s_%s.png", response_var, zone_number, theme_name))
@@ -257,11 +255,13 @@ generate_and_save_lineplots <- function(input_data = get("pretreated_data_for_li
               message("❌ Error saving PNG for ", response_var, ", zone ", zone_number, ", theme ", theme_name, ": ", e$message)
             })
           }
+          # Save HTML if selected.
           if (tolower(generate_lines_plots_html) %in% c("yes", "y")) {
             tryCatch({
               temp_html <- file.path(temp_dir, sprintf("plot_%s_zone_%s_%s.html", response_var, zone_number, theme_name))
               final_html <- file.path(html_dir, sprintf("plot_%s_zone_%s_%s.html", response_var, zone_number, theme_name))
-              suppressWarnings(saveWidget(plotly::ggplotly(p_html, tooltip = "text") %>% layout(boxmode = "group"), temp_html, selfcontained = TRUE))
+              suppressWarnings(saveWidget(plotly::ggplotly(p_html, tooltip = "text") %>% layout(boxmode = "group"), 
+                                          temp_html, selfcontained = TRUE))
               file.copy(temp_html, final_html, overwrite = TRUE)
               file.remove(temp_html)
               message("✔️ HTML saved: ", final_html)
@@ -269,10 +269,31 @@ generate_and_save_lineplots <- function(input_data = get("pretreated_data_for_li
               message("❌ Error saving HTML for ", response_var, ", zone ", zone_number, ", theme ", theme_name, ": ", e$message)
             })
           }
+          # Optionally, store the plot objects if needed.
+          lineplot_list[[length(lineplot_list)+1]] <- p_png
         }
       }
     }
     message("🎉 Lineplot generation completed!\n")
+    
+    final_lineplots <- do.call(rbind, lineplot_list)
+    final_boxplots <- do.call(rbind, boxplot_list)
+    final_delta_boxplots <- do.call(rbind, delta_boxplot_list)
+    
+    message("\n🎉 Pretreatment complete!")
+    message("💾 Line plot data saved globally as 'pretreated_data_for_lineplots_df'")
+    message("💾 Box plot data saved globally as 'pretreated_data_for_boxplots_df'")
+    message("💾 Delta boxplot data saved globally as 'pretreated_delta_data_for_boxplots_df'\n")
+    
+    assign("pretreated_data_for_lineplots_df", final_lineplots, envir = .GlobalEnv)
+    assign("pretreated_data_for_boxplots_df", final_boxplots, envir = .GlobalEnv)
+    assign("pretreated_delta_data_for_boxplots_df", final_delta_boxplots, envir = .GlobalEnv)
+    
+    return(list(
+      lineplots = final_lineplots,
+      boxplots = final_boxplots,
+      delta_boxplots = final_delta_boxplots
+    ))
     
   }, error = function(e) {
     message("❌ Error in generate_and_save_lineplots: ", e$message)
