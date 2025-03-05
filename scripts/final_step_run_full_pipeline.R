@@ -248,8 +248,8 @@ run_full_pipeline <- function() {
   data_with_periods <- assign_periods_with_custom_durations(enriched_data)
   zone_data_list <- process_zones(data_with_periods)              
   zone_processed <- calculate_and_clean_zone_data(zone_data_list) 
-  pretreated_data <- pre_visualization_data_treatment(zone_processed$zone_combined)
-  
+  pretreated_data <- pre_visualization_data_treatment(zone_calculated_list)
+
   generate_and_save_lineplots()                                   
   generate_and_save_boxplots_with_excel_files()                   
   generate_and_save_boxplots_delta_with_excel_files()
