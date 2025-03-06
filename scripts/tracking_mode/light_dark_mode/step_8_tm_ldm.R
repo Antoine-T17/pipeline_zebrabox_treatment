@@ -276,25 +276,6 @@ generate_and_save_lineplots <- function(input_data = get("pretreated_data_for_li
     }
     message("🎉 Lineplot generation completed!\n")
     
-    final_lineplots <- do.call(rbind, lineplot_list)
-    final_boxplots <- do.call(rbind, boxplot_list)
-    final_delta_boxplots <- do.call(rbind, delta_boxplot_list)
-    
-    message("\n🎉 Pretreatment complete!")
-    message("💾 Line plot data saved globally as 'pretreated_data_for_lineplots_df'")
-    message("💾 Box plot data saved globally as 'pretreated_data_for_boxplots_df'")
-    message("💾 Delta boxplot data saved globally as 'pretreated_delta_data_for_boxplots_df'\n")
-    
-    assign("pretreated_data_for_lineplots_df", final_lineplots, envir = .GlobalEnv)
-    assign("pretreated_data_for_boxplots_df", final_boxplots, envir = .GlobalEnv)
-    assign("pretreated_delta_data_for_boxplots_df", final_delta_boxplots, envir = .GlobalEnv)
-    
-    return(list(
-      lineplots = final_lineplots,
-      boxplots = final_boxplots,
-      delta_boxplots = final_delta_boxplots
-    ))
-    
   }, error = function(e) {
     message("❌ Error in generate_and_save_lineplots: ", e$message)
     return(invisible(NULL))

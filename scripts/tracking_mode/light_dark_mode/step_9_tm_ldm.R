@@ -29,7 +29,8 @@ generate_and_save_boxplots_with_excel_files <- function(input_data = get("pretre
                                 validate_fn = function(x) TRUE,
                                 transform_fn = function(x) x,
                                 error_msg = "❌ Invalid input. Please try again.") {
-      if (!is.null(pipeline_inputs[[param]]) && pipeline_inputs[[param]] != "" && !is.na(pipeline_inputs[[param]])) {
+      if (!is.null(pipeline_inputs[[param]]) && pipeline_inputs[[param]] != "" &&
+          !is.na(pipeline_inputs[[param]])) {
         candidate <- transform_fn(as.character(pipeline_inputs[[param]]))
         message("💾 Using pre-recorded input for '", param, "': ", candidate)
         input_record_list[[param]] <<- candidate
@@ -91,7 +92,7 @@ generate_and_save_boxplots_with_excel_files <- function(input_data = get("pretre
                                           transform_fn = function(x) tolower(trimws(x)),
                                           error_msg = "❌ Please enter 'yes' or 'no'.")
     if (keep_acclimatation %in% c("no", "n")) {
-      boxplot_data <- dplyr::filter(boxplot_data, !grepl("acclimatation", period_with_numbers, ignore.case = TRUE))
+      boxplot_data <- filter(boxplot_data, !grepl("acclimatation", period_with_numbers, ignore.case = TRUE))
       message("✔️ Acclimatation period removed.")
     } else {
       message("✔️ Acclimatation period retained.")
@@ -107,6 +108,21 @@ generate_and_save_boxplots_with_excel_files <- function(input_data = get("pretre
     message("✔️ Output directories created.")
     
     # Step 8: Manage colors.
+    # Use the user-specified ordering for condition_grouped.
+    if (!is.null(pipeline_inputs[["conditions_grouped_order"]]) &&
+        pipeline_inputs[["conditions_grouped_order"]] != "") {
+      # Assume semicolon separated; take the first token as the universal ordering.
+      order_str <- unlist(strsplit(as.character(pipeline_inputs[["conditions_grouped_order"]]), ";"))[1]
+      condition_groups <- trimws(unlist(strsplit(order_str, ",")))
+    } else {
+      condition_groups <- unique(boxplot_data$condition_grouped)
+    }
+    default_condition_colors <- rep(c("#FF6666", "#66B2FF", "#99CC33", "#FFCC33", "#CC66FF",
+                                      "#FF9966", "#66CCCC", "#FF6699", "#99CCFF", "#66FF66",
+                                      "#CCCC33", "#CC9966", "#66FFCC", "#FF6666", "#9933CC",
+                                      "#3366FF", "#FFCC99", "#66CC99", "#FF9999", "#CCCCFF"),
+                                    length.out = length(condition_groups))
+    names(default_condition_colors) <- condition_groups
     custom_color <- get_input_local("custom_color",
                                     "🎨 Enter custom colors for conditions (comma-separated), or press Enter for defaults: ",
                                     validate_fn = function(x) TRUE,
@@ -114,13 +130,6 @@ generate_and_save_boxplots_with_excel_files <- function(input_data = get("pretre
                                       trimmed <- trimws(x)
                                       if (trimmed == "") return(character(0)) else split_and_trim(trimmed)
                                     })
-    condition_groups <- unique(boxplot_data$condition_grouped)
-    default_condition_colors <- rep(c("#FF6666", "#66B2FF", "#99CC33", "#FFCC33", "#CC66FF",
-                                      "#FF9966", "#66CCCC", "#FF6699", "#99CCFF", "#66FF66",
-                                      "#CCCC33", "#CC9966", "#66FFCC", "#FF6666", "#9933CC",
-                                      "#3366FF", "#FFCC99", "#66CC99", "#FF9999", "#CCCCFF"),
-                                    length.out = length(condition_groups))
-    names(default_condition_colors) <- condition_groups
     if (length(custom_color) == 0) {
       colors <- default_condition_colors
       message("✔️ Using default colors.")
@@ -175,7 +184,7 @@ generate_and_save_boxplots_with_excel_files <- function(input_data = get("pretre
       )
     }
     
-    # Step 10: Prompt for output formats.
+    # Step 10: Prompt for desired output formats.
     generate_boxplots_html <- get_input_local("generate_boxplots_html",
                                               "❓ Generate interactive HTML boxplots? (yes/no): ",
                                               default_value = "no",
@@ -189,16 +198,25 @@ generate_and_save_boxplots_with_excel_files <- function(input_data = get("pretre
                                              transform_fn = function(x) tolower(trimws(x)),
                                              error_msg = "❌ Please enter 'yes' or 'no'.")
     
-    # Step 11: Generate boxplots.
+    # Step 11: Set condition_grouped factor levels in boxplot_data using the desired order.
+    if (!is.null(pipeline_inputs[["conditions_grouped_order"]]) &&
+        pipeline_inputs[["conditions_grouped_order"]] != "") {
+      # Use the first token (universal order)
+      order_str <- unlist(strsplit(as.character(pipeline_inputs[["conditions_grouped_order"]]), ";"))[1]
+      desired_order <- trimws(unlist(strsplit(order_str, ",")))
+      boxplot_data$condition_grouped <- factor(boxplot_data$condition_grouped, levels = desired_order)
+      message("✔️ condition_grouped factor levels set to: ", paste(levels(boxplot_data$condition_grouped), collapse = ", "))
+    }
+    
+    # Step 12: Generate boxplots.
     if (do_plot_generation) {
       message("⏳ Generating boxplots... This may take a moment.")
       for (response_var in grep("^mean_", colnames(boxplot_data), value = TRUE)) {
         for (zone_number in unique(boxplot_data$zone)) {
-          zone_data <- dplyr::filter(boxplot_data, zone == zone_number)
+          zone_data <- filter(boxplot_data, zone == zone_number)
           for (theme_name in c("light", "dark")) {
             current_theme <- if (theme_name == "light") light_theme() else dark_theme()
             
-            # Generate static PNG version.
             p_png <- ggplot(zone_data, aes(x = condition_grouped, y = .data[[response_var]], fill = condition_grouped)) +
               geom_boxplot(outlier.shape = NA, alpha = 0.6,
                            color = if (theme_name == "light") "black" else "white") +
@@ -211,7 +229,6 @@ generate_and_save_boxplots_with_excel_files <- function(input_data = get("pretre
                 get("custom_colors_global", envir = .GlobalEnv) else colors) +
               current_theme
             
-            # Generate interactive HTML version with tooltips.
             p_html <- ggplot(zone_data, aes(x = condition_grouped, y = .data[[response_var]], fill = condition_grouped,
                                             text = paste("Condition Grouped:", condition_grouped,
                                                          "<br>Condition Tagged:", condition_tagged,
@@ -228,7 +245,7 @@ generate_and_save_boxplots_with_excel_files <- function(input_data = get("pretre
                 get("custom_colors_global", envir = .GlobalEnv) else colors) +
               current_theme
             
-            if (generate_boxplots_png %in% c("yes", "y")) {
+            if (tolower(generate_boxplots_png) %in% c("yes", "y")) {
               tryCatch({
                 png_file <- file.path(png_dir, sprintf("boxplot_%s_zone_%s_%s.png", response_var, zone_number, theme_name))
                 ggsave(filename = png_file, plot = p_png, width = 12, height = 9, dpi = 300)
@@ -237,11 +254,12 @@ generate_and_save_boxplots_with_excel_files <- function(input_data = get("pretre
                 message("❌ Error saving PNG for ", response_var, ", zone ", zone_number, ", theme ", theme_name, ": ", e$message)
               })
             }
-            if (generate_boxplots_html %in% c("yes", "y")) {
+            if (tolower(generate_boxplots_html) %in% c("yes", "y")) {
               tryCatch({
                 temp_html <- file.path(tempdir(), sprintf("boxplot_%s_zone_%s_%s.html", response_var, zone_number, theme_name))
                 final_html <- file.path(html_dir, sprintf("boxplot_%s_zone_%s_%s.html", response_var, zone_number, theme_name))
-                suppressWarnings(htmlwidgets::saveWidget(plotly::ggplotly(p_html, tooltip = "text"), temp_html, selfcontained = TRUE))
+                suppressWarnings(htmlwidgets::saveWidget(plotly::ggplotly(p_html, tooltip = "text"), 
+                                                         temp_html, selfcontained = TRUE))
                 file.copy(temp_html, final_html, overwrite = TRUE)
                 file.remove(temp_html)
                 message("✔️ HTML saved: ", final_html)
@@ -257,18 +275,18 @@ generate_and_save_boxplots_with_excel_files <- function(input_data = get("pretre
       message("❌ Boxplot generation skipped.")
     }
     
-    # Step 12: Generate pairwise percentage differences and write Excel file.
+    # Step 13: Generate pairwise percentage differences and write Excel file.
     percentage_diff_results <- list()
     for (response_var in grep("^mean_", colnames(boxplot_data), value = TRUE)) {
       message(sprintf("📊 Calculating percentage differences for %s...", response_var))
       results <- boxplot_data %>% group_by(period_without_numbers, zone) %>% 
         tidyr::nest() %>% 
-        dplyr::mutate(
+        mutate(
           comparison_results = purrr::map(data, function(df) {
             condition_pairs <- combn(unique(df$condition_grouped), 2, simplify = FALSE)
             purrr::map_dfr(condition_pairs, function(pair) {
-              cond1 <- dplyr::filter(df, condition_grouped == pair[1])
-              cond2 <- dplyr::filter(df, condition_grouped == pair[2])
+              cond1 <- filter(df, condition_grouped == pair[1])
+              cond2 <- filter(df, condition_grouped == pair[2])
               if (nrow(cond1) > 0 && nrow(cond2) > 0) {
                 tibble(
                   condition_comparison = paste(pair[1], pair[2], sep = "-"),
@@ -286,7 +304,7 @@ generate_and_save_boxplots_with_excel_files <- function(input_data = get("pretre
               }
             })
           })
-        ) %>% dplyr::select(-data) %>% tidyr::unnest(comparison_results)
+        ) %>% select(-data) %>% tidyr::unnest(comparison_results)
       
       percentage_diff_results[[response_var]] <- results
     }
@@ -318,6 +336,15 @@ generate_and_save_boxplots_with_excel_files <- function(input_data = get("pretre
     
     openxlsx::saveWorkbook(wb, excel_file, overwrite = TRUE)
     message(sprintf("🎉 Pairwise differences saved to %s with conditional formatting!\n", excel_file))
+    
+    # Step 14: Save combined outputs globally.
+    final_boxplots <- do.call(rbind, boxplot_list)
+    assign("pretreated_data_for_boxplots_df", final_boxplots, envir = .GlobalEnv)
+    
+    return(list(
+      boxplots = final_boxplots,
+      percentage_differences = percentage_diff_results
+    ))
     
   }, error = function(e) {
     message("❌ Error in generate_and_save_boxplots_with_excel_files: ", e$message)
