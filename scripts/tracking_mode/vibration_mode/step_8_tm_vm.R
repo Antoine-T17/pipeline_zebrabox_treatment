@@ -12,7 +12,7 @@ generate_and_save_lineplots <- function(input_data = get("pretreated_data_for_li
   tryCatch({
     # Step 1: Display welcome message.
     message("\n---\n")
-    message("👋 Welcome to the Lineplot Generation Process!")
+    message("👋 Welcome to the Lineplot Generation Process (Vibration Mode)!")
     message("📋 This function will help you:")
     message("   • Generate high-quality line plots from your data.")
     message("   • Customize plot appearance using themes and colors.")
@@ -186,7 +186,7 @@ generate_and_save_lineplots <- function(input_data = get("pretreated_data_for_li
       )
     }
     
-    # Step 11: Prompt for desired output formats (only once here, after color management).
+    # Step 11: Prompt for desired output formats.
     generate_lines_plots_html <- get_input_local("generate_lines_plots_html",
                                                  "❓ Generate interactive HTML line plots? (yes/no): ",
                                                  validate_fn = function(x) tolower(x) %in% c("yes", "y", "no", "n"),
@@ -210,8 +210,6 @@ generate_and_save_lineplots <- function(input_data = get("pretreated_data_for_li
     
     # Prepare lists to hold plots.
     lineplot_list <- list()
-    boxplot_list <- list()
-    delta_boxplot_list <- list()
     
     for (response_var in response_vars) {
       for (zone_number in unique(input_data$zone)) {
@@ -277,22 +275,10 @@ generate_and_save_lineplots <- function(input_data = get("pretreated_data_for_li
     message("🎉 Lineplot generation completed!\n")
     
     final_lineplots <- do.call(rbind, lineplot_list)
-    final_boxplots <- do.call(rbind, boxplot_list)
-    final_delta_boxplots <- do.call(rbind, delta_boxplot_list)
-    
-    message("\n🎉 Pretreatment complete!")
-    message("💾 Line plot data saved globally as 'pretreated_data_for_lineplots_df'")
-    message("💾 Box plot data saved globally as 'pretreated_data_for_boxplots_df'")
-    message("💾 Delta boxplot data saved globally as 'pretreated_delta_data_for_boxplots_df'\n")
-    
     assign("pretreated_data_for_lineplots_df", final_lineplots, envir = .GlobalEnv)
-    assign("pretreated_data_for_boxplots_df", final_boxplots, envir = .GlobalEnv)
-    assign("pretreated_delta_data_for_boxplots_df", final_delta_boxplots, envir = .GlobalEnv)
     
     return(list(
-      lineplots = final_lineplots,
-      boxplots = final_boxplots,
-      delta_boxplots = final_delta_boxplots
+      lineplots = final_lineplots
     ))
     
   }, error = function(e) {

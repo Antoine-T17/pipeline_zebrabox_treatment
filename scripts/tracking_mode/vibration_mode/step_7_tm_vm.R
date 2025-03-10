@@ -1,6 +1,4 @@
 # -----------------------------------------------------------
-# primary mode : tracking mode
-# secondary mode : vibration mode
 # Function: pre_visualization_data_treatment
 # Purpose: Prepares data for visualization by performing three pretreatment steps:
 #          Part I – Lineplots: Remove unwanted conditions, suspect wells, response columns, etc.
@@ -9,7 +7,7 @@
 #
 #          Some variables are per-plate (tokens separated by ";"):
 #            - conditions_order, conditions_grouped_order, remove_conditions,
-#              remove_conditions_grouped, remove_suspect_well, remove_variables, remove_period.
+#              remove_conditions_grouped, remove_suspect_well, remove_variables, and remove_period.
 #          Others are universal: aggregation_period, vibration_period, rest_period.
 #
 #          At the end, data from each plate are combined (via rbind) for final visualization.
@@ -84,25 +82,32 @@ pre_visualization_data_treatment <- function(zone_calculated_list) {
   
   # ---------- PER-PLATE VARIABLES ----------
   conditions_order_tokens <- get_per_plate_input("conditions_order",
-                                                 sprintf("❓ Enter the desired order of conditions for %d plate(s), separated by ';': ", n_plates), n_plates)
+                                                 sprintf("❓ Enter the desired order of conditions for %d plate(s), separated by ';': ", n_plates),
+                                                 n_plates)
   
   conditions_grouped_order_tokens <- get_per_plate_input("conditions_grouped_order",
-                                                         sprintf("❓ Enter the desired order of condition_grouped for %d plate(s), separated by ';': ", n_plates), n_plates)
+                                                         sprintf("❓ Enter the desired order of condition_grouped for %d plate(s), separated by ';': ", n_plates),
+                                                         n_plates)
   
   remove_conditions_tokens <- get_per_plate_input("remove_conditions",
-                                                  sprintf("❓ Enter condition(s) to remove for %d plate(s) (comma-separated or 'no'), separated by ';': ", n_plates), n_plates)
+                                                  sprintf("❓ Enter condition(s) to remove for %d plate(s) (comma-separated or 'no'), separated by ';': ", n_plates),
+                                                  n_plates)
   
   remove_conditions_grouped_tokens <- get_per_plate_input("remove_conditions_grouped",
-                                                          sprintf("❓ Enter grouped condition(s) to remove for %d plate(s) (comma-separated or 'no'), separated by ';': ", n_plates), n_plates)
+                                                          sprintf("❓ Enter grouped condition(s) to remove for %d plate(s) (comma-separated or 'no'), separated by ';': ", n_plates),
+                                                          n_plates)
   
   remove_suspect_well_tokens <- get_per_plate_input("remove_suspect_well",
-                                                    sprintf("❓ Enter suspect wells to remove for %d plate(s) (comma-separated or 'no'), separated by ';': ", n_plates), n_plates)
+                                                    sprintf("❓ Enter suspect wells to remove for %d plate(s) (comma-separated or 'no'), separated by ';': ", n_plates),
+                                                    n_plates)
   
   remove_variables_tokens <- get_per_plate_input("remove_variables",
-                                                 sprintf("❓ Enter response variable column(s) to remove for %d plate(s) (comma-separated or 'no'), separated by ';': ", n_plates), n_plates)
+                                                 sprintf("❓ Enter response variable column(s) to remove for %d plate(s) (comma-separated or 'no'), separated by ';': ", n_plates),
+                                                 n_plates)
   
   remove_period_tokens <- get_per_plate_input("remove_period",
-                                              sprintf("❓ Enter period(s) to remove for %d plate(s) (comma-separated or 'no'), separated by ';': ", n_plates), n_plates)
+                                              sprintf("❓ Enter period(s) to remove for %d plate(s) (comma-separated or 'no'), separated by ';': ", n_plates),
+                                              n_plates)
   
   # ---------- UNIVERSAL VARIABLES ----------
   aggregation_period <- get_input_local("aggregation_period",
@@ -112,14 +117,14 @@ pre_visualization_data_treatment <- function(zone_calculated_list) {
                                         error_msg = "❌ Please enter a positive number for aggregation period.")
   
   vibration_period <- get_input_local("vibration_period",
-                                  "❓ Enter vibration period(s) to include (comma-separated, e.g., vibration1,vibration2): ",
-                                  validate_fn = function(x) length(trimws(unlist(strsplit(x, ",")))) > 0,
-                                  transform_fn = function(x) trimws(unlist(strsplit(x, ","))),
-                                  error_msg = "❌ Please enter at least one vibration period.")
+                                      "❓ Enter vibration period(s) to include (comma-separated, e.g., vibration1,vibration2): ",
+                                      validate_fn = function(x) length(trimws(unlist(strsplit(x, ","))) > 0),
+                                      transform_fn = function(x) trimws(unlist(strsplit(x, ","))),
+                                      error_msg = "❌ Please enter at least one vibration period.")
   
   rest_period <- get_input_local("rest_period",
                                  "❓ Enter rest period(s) to include (comma-separated, e.g., rest1,rest2): ",
-                                 validate_fn = function(x) length(trimws(unlist(strsplit(x, ",")))) > 0,
+                                 validate_fn = function(x) length(trimws(unlist(strsplit(x, ","))) > 0),
                                  transform_fn = function(x) trimws(unlist(strsplit(x, ","))),
                                  error_msg = "❌ Please enter at least one rest period.")
   
@@ -144,13 +149,24 @@ pre_visualization_data_treatment <- function(zone_calculated_list) {
     if (length(tmp) == 1 && tolower(tmp) == "no") character(0) else tmp
   })
   
-  # For remove_period, verify that each token matches the plate's available periods
+  # ---------- VERIFY remove_period PER-PLATE ----------
   remove_period_list <- vector("list", n_plates)
   for (i in seq_len(n_plates)) {
     valid <- FALSE
+    # Use the already extracted zone_combined data as data_plate
+    data_plate <- zone_calculated_list[[i]]$zone_combined
     while (!valid) {
       token <- trimws(unlist(strsplit(remove_period_tokens[i], ",")))
-      available_periods <- unique(zone_calculated_list[[i]]$zone_combined$period_with_numbers)
+      # DEBUG prints:
+      message(sprintf("DEBUG: Plate %d - User entered remove_period tokens: %s", i, paste(token, collapse = ", ")))
+      # If column 'period_with_numbers' exists and is non-empty, use it; otherwise, fallback to 'period'
+      if ("period_with_numbers" %in% names(data_plate) && length(data_plate$period_with_numbers) > 0) {
+        available_periods <- unique(data_plate$period_with_numbers)
+      } else {
+        available_periods <- unique(data_plate$period)
+      }
+      message(sprintf("DEBUG: Plate %d - Available periods: %s", i, paste(available_periods, collapse = ", ")))
+      
       if (length(token) == 1 && tolower(token) == "no") {
         remove_period_list[[i]] <- character(0)
         valid <- TRUE
@@ -175,7 +191,7 @@ pre_visualization_data_treatment <- function(zone_calculated_list) {
   for (i in seq_len(n_plates)) {
     message(sprintf("\n📋 Processing common pretreatment steps for plate %d...", i))
     
-    # Retrieve the combined data from Function 6
+    # Retrieve the combined data from Function 6.
     data_plate <- zone_calculated_list[[i]]$zone_combined
     
     available_conditions <- unique(data_plate$condition)
@@ -183,13 +199,17 @@ pre_visualization_data_treatment <- function(zone_calculated_list) {
     message("✅ Available conditions: ", paste(available_conditions, collapse = ", "))
     message("✅ Available condition_grouped: ", paste(available_condition_grouped, collapse = ", "))
     
-    # Apply per-plate orders
+    # Apply per-plate orders.
     cond_order <- conditions_order_list[[i]]
     cond_group_order <- conditions_grouped_order_list[[i]]
     message(sprintf("✔️ For plate %d, condition order set to: %s", i, paste(cond_order, collapse = ", ")))
     message(sprintf("✔️ For plate %d, condition_grouped order set to: %s", i, paste(cond_group_order, collapse = ", ")))
     
-    # Remove specified conditions
+    # Set factor levels for condition_grouped using the desired order.
+    data_plate$condition_grouped <- factor(data_plate$condition_grouped, levels = cond_group_order)
+    message(sprintf("✔️ For plate %d, condition_grouped factor levels set to: %s", i, paste(levels(data_plate$condition_grouped), collapse = ", ")))
+    
+    # Remove specified conditions.
     rem_conds <- remove_conditions_list[[i]]
     if (length(rem_conds) == 0) {
       message(sprintf("✔️ For plate %d, no conditions removed.", i))
@@ -204,7 +224,7 @@ pre_visualization_data_treatment <- function(zone_calculated_list) {
       }
     }
     
-    # Remove specified grouped conditions
+    # Remove specified grouped conditions.
     rem_conds_grouped <- remove_conditions_grouped_list[[i]]
     if (length(rem_conds_grouped) == 0) {
       message(sprintf("✔️ For plate %d, no grouped conditions removed.", i))
@@ -219,7 +239,7 @@ pre_visualization_data_treatment <- function(zone_calculated_list) {
       }
     }
     
-    # Remove suspect wells
+    # Remove suspect wells.
     rem_wells <- remove_suspect_well_list[[i]]
     if (length(rem_wells) == 0) {
       message(sprintf("✔️ For plate %d, no suspect wells removed.", i))
@@ -234,7 +254,7 @@ pre_visualization_data_treatment <- function(zone_calculated_list) {
       }
     }
     
-    # Remove specified response variable columns
+    # Remove specified response variable columns.
     rem_vars <- remove_variables_list[[i]]
     default_response_vars <- c("totaldist", "smldist", "lardist",
                                "totaldur", "smldur", "lardur",
@@ -258,7 +278,7 @@ pre_visualization_data_treatment <- function(zone_calculated_list) {
       response_vars <- setdiff(default_response_vars, vars_to_remove)
     }
     
-    # Remove specified periods
+    # Remove specified periods.
     rem_period <- remove_period_list[[i]]
     if (length(rem_period) == 0) {
       message(sprintf("✔️ For plate %d, no periods removed.", i))
@@ -267,7 +287,7 @@ pre_visualization_data_treatment <- function(zone_calculated_list) {
       data_plate <- filter(data_plate, !(period %in% rem_period))
     }
     
-    # Compute well counts per condition & zone at minute=1
+    # Compute well counts per condition & zone at minute=1.
     specific_minute <- 1
     wells_per_condition <- data_plate %>% 
       filter(!is.na(start) & start == specific_minute) %>% 
@@ -334,7 +354,7 @@ pre_visualization_data_treatment <- function(zone_calculated_list) {
       paste0("Rounded Boundary: ", row["boundary_time"], " (", row["transition"], ")")
     }), collapse = "\n"))
     
-    tolerance <- 0.2
+    tolerance <- 0.5
     selected_boundaries <- get_input_local("selected_period_boundaries",
                                            sprintf("❓ Enter one or more period boundaries (comma-separated) for plate %d: ", i),
                                            validate_fn = function(x) {
@@ -394,7 +414,7 @@ pre_visualization_data_treatment <- function(zone_calculated_list) {
     delta_boxplot_list[[i]] <- delta_boxplot_data
   }
   
-  # Combine data from all plates
+  # Combine data from all plates.
   final_lineplots <- do.call(rbind, lineplot_list)
   final_boxplots <- do.call(rbind, boxplot_list)
   final_delta_boxplots <- do.call(rbind, delta_boxplot_list)
