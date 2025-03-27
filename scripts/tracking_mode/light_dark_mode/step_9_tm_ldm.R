@@ -1,12 +1,3 @@
-# -----------------------------------------------------------
-# primary mode : tracking mode
-# secondary mode : light dark mode
-# Function: generate_and_save_boxplots_with_excel_files
-# Purpose: Generates boxplots from pretreated boxplot data, validates the data structure,
-#          manages colors and themes, saves plots in PNG and interactive HTML formats,
-#          and writes pairwise percentage differences to an Excel file with conditional formatting.
-#          Interactive HTML plots are first saved to a temporary directory and then moved.
-# -----------------------------------------------------------
 generate_and_save_boxplots_with_excel_files <- function(input_data = get("pretreated_data_for_boxplots_df", envir = .GlobalEnv),
                                                         output_dir = "outputs/tracking_mode/light_dark_mode/figures/boxplots",
                                                         excel_output_dir = "outputs/tracking_mode/light_dark_mode/tables") {
@@ -108,10 +99,8 @@ generate_and_save_boxplots_with_excel_files <- function(input_data = get("pretre
     message("✔️ Output directories created.")
     
     # Step 8: Manage colors.
-    # Use the user-specified ordering for condition_grouped.
     if (!is.null(pipeline_inputs[["conditions_grouped_order"]]) &&
         pipeline_inputs[["conditions_grouped_order"]] != "") {
-      # Assume semicolon separated; take the first token as the universal ordering.
       order_str <- unlist(strsplit(as.character(pipeline_inputs[["conditions_grouped_order"]]), ";"))[1]
       condition_groups <- trimws(unlist(strsplit(order_str, ",")))
     } else {
@@ -201,7 +190,6 @@ generate_and_save_boxplots_with_excel_files <- function(input_data = get("pretre
     # Step 11: Set condition_grouped factor levels in boxplot_data using the desired order.
     if (!is.null(pipeline_inputs[["conditions_grouped_order"]]) &&
         pipeline_inputs[["conditions_grouped_order"]] != "") {
-      # Use the first token (universal order)
       order_str <- unlist(strsplit(as.character(pipeline_inputs[["conditions_grouped_order"]]), ";"))[1]
       desired_order <- trimws(unlist(strsplit(order_str, ",")))
       boxplot_data$condition_grouped <- factor(boxplot_data$condition_grouped, levels = desired_order)
@@ -225,8 +213,7 @@ generate_and_save_boxplots_with_excel_files <- function(input_data = get("pretre
                          color = if (theme_name == "light") "black" else "white") +
               facet_wrap(~period_without_numbers, scales = "free_x") +
               labs(x = "Conditions", y = sprintf("%s (Zone %s)", response_var, zone_number), fill = "Condition") +
-              scale_fill_manual(values = if (exists("custom_colors_global", envir = .GlobalEnv))
-                get("custom_colors_global", envir = .GlobalEnv) else colors) +
+              scale_fill_manual(values = colors) +
               current_theme
             
             p_html <- ggplot(zone_data, aes(x = condition_grouped, y = .data[[response_var]], fill = condition_grouped,
@@ -241,8 +228,7 @@ generate_and_save_boxplots_with_excel_files <- function(input_data = get("pretre
                          color = if (theme_name == "light") "black" else "white") +
               facet_wrap(~period_without_numbers, scales = "free_x") +
               labs(x = "Conditions", y = sprintf("%s (Zone %s)", response_var, zone_number), fill = "Condition") +
-              scale_fill_manual(values = if (exists("custom_colors_global", envir = .GlobalEnv))
-                get("custom_colors_global", envir = .GlobalEnv) else colors) +
+              scale_fill_manual(values = colors) +
               current_theme
             
             if (tolower(generate_boxplots_png) %in% c("yes", "y")) {
@@ -337,12 +323,7 @@ generate_and_save_boxplots_with_excel_files <- function(input_data = get("pretre
     openxlsx::saveWorkbook(wb, excel_file, overwrite = TRUE)
     message(sprintf("🎉 Pairwise differences saved to %s with conditional formatting!\n", excel_file))
     
-    # Step 14: Save combined outputs globally.
-    final_boxplots <- do.call(rbind, boxplot_list)
-    assign("pretreated_data_for_boxplots_df", final_boxplots, envir = .GlobalEnv)
-    
     return(list(
-      boxplots = final_boxplots,
       percentage_differences = percentage_diff_results
     ))
     

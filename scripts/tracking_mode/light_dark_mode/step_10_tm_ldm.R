@@ -77,20 +77,11 @@ generate_and_save_boxplots_delta_with_excel_files <- function(input_data = get("
   }
   boxplot_data <- input_data
   
-  # # Step 6: Order condition groups using global ordering.
-  # if (exists("generated_condition_grouped_order", envir = .GlobalEnv)) {
-  #   message("✔️ Ordering condition groups using 'generated_condition_grouped_order'.")
-  #   boxplot_data$condition_grouped <- factor(boxplot_data$condition_grouped,
-  #                                            levels = get("generated_condition_grouped_order", envir = .GlobalEnv))
-  # } else {
-  #   stop("❌ 'generated_condition_grouped_order' not found in global environment.")
-  # }
-  # 
   # Step 7: Define forced output directories.
   message("📁 Creating output directories for delta boxplots...")
-  html_dir <- "outputs/tracking_mode/light_dark_mode/figures/boxplots/html"
+  html_dir <- file.path(output_dir, "html")
   png_dir  <- file.path(output_dir, "png")
-  temp_dir <- tempdir()  # Use system temporary directory (short path)
+  temp_dir <- tempdir()  # Use system temporary directory
   dir.create(html_dir, recursive = TRUE, showWarnings = FALSE)
   dir.create(png_dir, recursive = TRUE, showWarnings = FALSE)
   dir.create(excel_output_dir, recursive = TRUE, showWarnings = FALSE)
@@ -256,7 +247,6 @@ generate_and_save_boxplots_delta_with_excel_files <- function(input_data = get("
       nest() %>% 
       mutate(
         comparison_results = map(data, function(df) {
-          # Define momentum comparisons: before-switch, switch-after, before-after.
           momentum_pairs <- list(
             c("before", "switch"),
             c("switch", "after"),

@@ -1,22 +1,5 @@
-# -----------------------------------------------------------
-# primary mode : tracking mode
-# secondary mode : light dark mode
-# Function: pre_visualization_data_treatment
-# Purpose: Prepares data for visualization by performing three pretreatment steps:
-#          Part I – Lineplots: Remove unwanted conditions, suspect wells, response columns, etc.
-#          Part II – Boxplots: Filter data for user-selected light/dark periods and calculate group means.
-#          Part III – Delta Boxplots: Prompt for boundaries and delta, validate/filter data, and calculate group means.
-#
-#          Some variables are per-plate (tokens separated by ";"):
-#            - conditions_order, conditions_grouped_order, remove_conditions,
-#              remove_conditions_grouped, remove_suspect_well, remove_variables, remove_period.
-#          Others are universal: aggregation_period, light_period, dark_period.
-#
-#          At the end, data from each plate are combined (via rbind) for final visualization.
-#          Returns a list with lineplots, boxplots, and delta_boxplots elements.
-# -----------------------------------------------------------
 pre_visualization_data_treatment <- function(zone_calculated_list) {
-  # Make sure we have the correct number of plates
+  # Vérifier qu'il y a au moins une plaque
   n_plates <- length(zone_calculated_list)
   if (n_plates < 1) {
     stop("❌ zone_calculated_list is empty or not provided. Make sure Function 6 has populated it.")
@@ -33,14 +16,17 @@ pre_visualization_data_treatment <- function(zone_calculated_list) {
   message("   • Use universal inputs for aggregation_period, light_period, and dark_period.")
   message("   • Combine all plates (via rbind) for final visualization datasets.\n")
   
-  # Retrieve pipeline inputs from global environment
+  # Récupérer les inputs du pipeline depuis l'environnement global
   pipeline_inputs <- get("pipeline_inputs", envir = .GlobalEnv)
+  # Initialiser une liste pour enregistrer les inputs utilisés
+  input_record_list <- list()
   
-  # Helper for standard interactive input
+  # Fonction auxiliaire pour obtenir une saisie interactive.
+  # Pour "conditions_grouped_order", on force le prompt en ignorant pipeline_inputs.
   get_input_local <- function(param, prompt_msg, validate_fn, transform_fn,
                               error_msg = "❌ Invalid input. Please try again.") {
-    if (!is.null(pipeline_inputs[[param]]) && !is.na(pipeline_inputs[[param]]) &&
-        pipeline_inputs[[param]] != "") {
+    if (param != "conditions_grouped_order" && !is.null(pipeline_inputs[[param]]) && 
+        !is.na(pipeline_inputs[[param]]) && pipeline_inputs[[param]] != "") {
       candidate <- transform_fn(as.character(pipeline_inputs[[param]]))
       if (validate_fn(as.character(pipeline_inputs[[param]]))) {
         message("💾 Using pre-recorded input for '", param, "': ", as.character(pipeline_inputs[[param]]))
@@ -67,7 +53,7 @@ pre_visualization_data_treatment <- function(zone_calculated_list) {
     }
   }
   
-  # Helper for per-plate inputs. We pass in n_plates explicitly.
+  # Fonction auxiliaire pour les inputs par plaque.
   get_per_plate_input <- function(param, prompt_msg, n_plates) {
     validate_fn <- function(x) {
       tokens <- unlist(strsplit(x, "\\s*;\\s*"))
@@ -82,10 +68,11 @@ pre_visualization_data_treatment <- function(zone_calculated_list) {
     return(result)
   }
   
-  # ---------- PER-PLATE VARIABLES ----------
+  # ---------- VARIABLES PAR PLAQUE ----------
   conditions_order_tokens <- get_per_plate_input("conditions_order",
                                                  sprintf("❓ Enter the desired order of conditions for %d plate(s), separated by ';': ", n_plates), n_plates)
   
+  # Pour conditions_grouped_order, le prompt est forcé (pipeline_inputs ignoré)
   conditions_grouped_order_tokens <- get_per_plate_input("conditions_grouped_order",
                                                          sprintf("❓ Enter the desired order of condition_grouped for %d plate(s), separated by ';': ", n_plates), n_plates)
   
@@ -104,7 +91,7 @@ pre_visualization_data_treatment <- function(zone_calculated_list) {
   remove_period_tokens <- get_per_plate_input("remove_period",
                                               sprintf("❓ Enter period(s) to remove for %d plate(s) (comma-separated or 'no'), separated by ';': ", n_plates), n_plates)
   
-  # ---------- UNIVERSAL VARIABLES ----------
+  # ---------- VARIABLES UNIVERSELLES ----------
   aggregation_period <- get_input_local("aggregation_period",
                                         "❓ Enter aggregation period in seconds (e.g., 60): ",
                                         validate_fn = function(x) !is.na(as.numeric(x)) && as.numeric(x) > 0,
@@ -123,7 +110,7 @@ pre_visualization_data_treatment <- function(zone_calculated_list) {
                                  transform_fn = function(x) trimws(unlist(strsplit(x, ","))),
                                  error_msg = "❌ Please enter at least one dark period.")
   
-  # ---------- SPLIT PER-PLATE TOKENS FURTHER ----------
+  # ---------- SPLIT DES TOKENS PAR PLAQUE ----------
   conditions_order_list <- lapply(conditions_order_tokens, function(tok) trimws(unlist(strsplit(tok, ","))))
   conditions_grouped_order_list <- lapply(conditions_grouped_order_tokens, function(tok) trimws(unlist(strsplit(tok, ","))))
   
@@ -144,7 +131,7 @@ pre_visualization_data_treatment <- function(zone_calculated_list) {
     if (length(tmp) == 1 && tolower(tmp) == "no") character(0) else tmp
   })
   
-  # For remove_period, verify that each token matches the plate's available periods
+  # Pour remove_period, on vérifie que chaque token correspond aux périodes disponibles pour la plaque
   remove_period_list <- vector("list", n_plates)
   for (i in seq_len(n_plates)) {
     valid <- FALSE
@@ -167,7 +154,7 @@ pre_visualization_data_treatment <- function(zone_calculated_list) {
     }
   }
   
-  # ---------- PER-PLATE PRETREATMENT ----------
+  # ---------- TRAITEMENT PAR PLAQUE ----------
   lineplot_list <- list()
   boxplot_list <- list()
   delta_boxplot_list <- list()
@@ -175,7 +162,7 @@ pre_visualization_data_treatment <- function(zone_calculated_list) {
   for (i in seq_len(n_plates)) {
     message(sprintf("\n📋 Processing common pretreatment steps for plate %d...", i))
     
-    # Retrieve the combined data from Function 6
+    # Récupérer les données combinées de la plaque (issue de la Fonction 6)
     data_plate <- zone_calculated_list[[i]]$zone_combined
     
     available_conditions <- unique(data_plate$condition)
@@ -183,13 +170,17 @@ pre_visualization_data_treatment <- function(zone_calculated_list) {
     message("✅ Available conditions: ", paste(available_conditions, collapse = ", "))
     message("✅ Available condition_grouped: ", paste(available_condition_grouped, collapse = ", "))
     
-    # Apply per-plate orders
+    # Appliquer les ordres définis pour chaque plaque
     cond_order <- conditions_order_list[[i]]
     cond_group_order <- conditions_grouped_order_list[[i]]
     message(sprintf("✔️ For plate %d, condition order set to: %s", i, paste(cond_order, collapse = ", ")))
     message(sprintf("✔️ For plate %d, condition_grouped order set to: %s", i, paste(cond_group_order, collapse = ", ")))
     
-    # Remove specified conditions
+    # Fixer les niveaux du facteur pour condition_grouped en utilisant l'ordre spécifié
+    data_plate$condition_grouped <- factor(data_plate$condition_grouped, levels = cond_group_order)
+    message(sprintf("✔️ For plate %d, condition_grouped factor levels set to: %s", i, paste(levels(data_plate$condition_grouped), collapse = ", ")))
+    
+    # Suppression des conditions spécifiées
     rem_conds <- remove_conditions_list[[i]]
     if (length(rem_conds) == 0) {
       message(sprintf("✔️ For plate %d, no conditions removed.", i))
@@ -204,7 +195,7 @@ pre_visualization_data_treatment <- function(zone_calculated_list) {
       }
     }
     
-    # Remove specified grouped conditions
+    # Suppression des grouped conditions spécifiées
     rem_conds_grouped <- remove_conditions_grouped_list[[i]]
     if (length(rem_conds_grouped) == 0) {
       message(sprintf("✔️ For plate %d, no grouped conditions removed.", i))
@@ -219,7 +210,7 @@ pre_visualization_data_treatment <- function(zone_calculated_list) {
       }
     }
     
-    # Remove suspect wells
+    # Suppression des suspect wells
     rem_wells <- remove_suspect_well_list[[i]]
     if (length(rem_wells) == 0) {
       message(sprintf("✔️ For plate %d, no suspect wells removed.", i))
@@ -234,7 +225,7 @@ pre_visualization_data_treatment <- function(zone_calculated_list) {
       }
     }
     
-    # Remove specified response variable columns
+    # Suppression des colonnes de variables de réponse spécifiées
     rem_vars <- remove_variables_list[[i]]
     default_response_vars <- c("totaldist", "smldist", "lardist",
                                "totaldur", "smldur", "lardur",
@@ -258,7 +249,7 @@ pre_visualization_data_treatment <- function(zone_calculated_list) {
       response_vars <- setdiff(default_response_vars, vars_to_remove)
     }
     
-    # Remove specified periods
+    # Suppression des périodes spécifiées
     rem_period <- remove_period_list[[i]]
     if (length(rem_period) == 0) {
       message(sprintf("✔️ For plate %d, no periods removed.", i))
@@ -267,7 +258,7 @@ pre_visualization_data_treatment <- function(zone_calculated_list) {
       data_plate <- filter(data_plate, !(period %in% rem_period))
     }
     
-    # Compute well counts per condition & zone at minute=1
+    # Calcul des nombres de puits par condition & zone à la minute=1
     specific_minute <- 1
     wells_per_condition <- data_plate %>% 
       filter(!is.na(start) & start == specific_minute) %>% 
@@ -328,7 +319,7 @@ pre_visualization_data_treatment <- function(zone_calculated_list) {
     if (!exists("boundary_associations_list", envir = .GlobalEnv)) {
       stop("❌ 'boundary_associations_list' not found. Please run the period assignment function first.")
     }
-    boundary_associations <- boundary_associations_list[[1]]  # assume same for all plates
+    boundary_associations <- boundary_associations_list[[1]]  # suppose identique pour toutes les plaques
     message("ℹ️ Available period boundaries (rounded) and transitions:")
     message(paste(apply(boundary_associations, 1, function(row) {
       paste0("Rounded Boundary: ", row["boundary_time"], " (", row["transition"], ")")
@@ -388,13 +379,13 @@ pre_visualization_data_treatment <- function(zone_calculated_list) {
     }
     delta_boxplot_data <- calculate_delta_means(filtered_delta)
     
-    # Store results
+    # Stocker les résultats pour cette plaque
     lineplot_list[[i]] <- normalized_sums
     boxplot_list[[i]] <- boxplot_data
     delta_boxplot_list[[i]] <- delta_boxplot_data
   }
   
-  # Combine data from all plates
+  # Combiner les données de toutes les plaques
   final_lineplots <- do.call(rbind, lineplot_list)
   final_boxplots <- do.call(rbind, boxplot_list)
   final_delta_boxplots <- do.call(rbind, delta_boxplot_list)
