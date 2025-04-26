@@ -1,7 +1,3 @@
-# -----------------------------------------------------------
-# Function: create_data_frame
-# Purpose: Combine processed zone data and generate summary datasets
-# -----------------------------------------------------------
 create_data_frame <- function(zone_calculated_list) {
   # TAG: UNIFIED WELCOME MESSAGE
   message("\n---\n")
@@ -12,7 +8,7 @@ create_data_frame <- function(zone_calculated_list) {
   message("   • Generate cumulative boxplot, lineplot, and heatmap datasets")
   message("   • Generate normalized lineplot, light/dark boxplot, and delta boxplot datasets")
   message("   • Export these as global objects\n")
-  
+   
   # TAG: HELPER FUNCTIONS
   convert_numeric_cols <- function(df, cols) {
     for (col in intersect(names(df), cols)) {

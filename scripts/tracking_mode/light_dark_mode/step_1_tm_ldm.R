@@ -1,13 +1,3 @@
-# Refactored generate_plate_plan function
-# -----------------------------------------------------------
-# primary mode : tracking mode
-# secondary mode : light dark mode
-# Function: generate_plate_plan
-# Purpose: Creates or loads one or more multi-well plate plans for light/dark mode experiments.
-#          If in creation mode, a new plate plan is generated (for one or more plates).
-#          In load mode, multiple plate plan file names may be provided separated by ";".
-#          The resulting plate plan(s) are stored globally as 'plate_plan_df_list'.
-# -----------------------------------------------------------
 generate_plate_plan <- function(plan_dir = "inputs/tracking_mode/light_dark_mode/plate_plan") {
   # STEP 1 — ENSURE DIRECTORY
   if (!dir.exists(plan_dir)) {

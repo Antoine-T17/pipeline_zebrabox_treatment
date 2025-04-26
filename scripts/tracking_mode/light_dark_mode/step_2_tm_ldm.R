@@ -1,4 +1,3 @@
-# Refactored extract_and_enrich_data function
 extract_and_enrich_data <- function() {
   # TAG: HELPER FUNCTIONS
   convert_numeric_cols <- function(df, cols) {

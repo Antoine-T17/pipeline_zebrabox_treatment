@@ -1,8 +1,3 @@
-# -----------------------------------------------------------
-# Function: generate_figures_and_tables
-# Purpose: Generate and save figures and tables from precomputed data
-#          (PNG lineplots and boxplots with light/dark themes).
-# -----------------------------------------------------------
 generate_figures_and_tables <- function(
     lineplot_list    = get("all_zone_combined_lineplots", envir = .GlobalEnv),
     boxplot_list     = get("all_zone_combined_light_dark_boxplots", envir = .GlobalEnv),

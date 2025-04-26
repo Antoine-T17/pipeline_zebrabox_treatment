@@ -209,7 +209,7 @@ load_mode_scripts <- function(primary_mode, secondary_mode) {
   )
   
   base_path <- file.path("scripts", primary_mode, secondary_mode)
-  script_names <- paste0("step_", 1:11, "_", primary_abbrev, "_", secondary_abbrev, ".R")
+  script_names <- paste0("step_", 1:5, "_", primary_abbrev, "_", secondary_abbrev, ".R")
   script_paths <- file.path(base_path, script_names)
   
   lapply(script_paths, function(scr) {
