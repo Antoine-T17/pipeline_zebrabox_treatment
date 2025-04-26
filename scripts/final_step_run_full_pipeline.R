@@ -243,25 +243,19 @@ run_full_pipeline <- function() {
   
   # Run the pipeline steps.
   plate_plan <- generate_plate_plan()                             
-  raw_data <- extract_data()                                      
-  enriched_data <- import_and_process_data(data = raw_data, plate_plan = plate_plan)
-  data_with_periods <- assign_periods_with_custom_durations(enriched_data)
-  zone_data_list <- process_zones(data_with_periods)              
-  zone_processed <- calculate_and_clean_zone_data(zone_data_list) 
-  pretreated_data <- pre_visualization_data_treatment(zone_calculated_list)
-
-  generate_and_save_lineplots()                                   
-  generate_and_save_boxplots_with_excel_files()                   
-  generate_and_save_boxplots_delta_with_excel_files()
+  enriched_data <- extract_and_enrich_data()
+  create_data_frame(zone_calculated_list)
+  generate_figures_and_tables()
+  
+  # pretreated_data <- pre_visualization_data_treatment()
+  
+  # generate_and_save_lineplots()                                   
+  # generate_and_save_boxplots_with_excel_files()                   
+  # generate_and_save_boxplots_delta_with_excel_files()
   
   end_pipeline_message()
   
-  # Create a global data frame of all recorded inputs.
-  input_record_df <<- data.frame(parameter = names(input_record_list),
-                                 input = unlist(input_record_list),
-                                 stringsAsFactors = FALSE)
-  
-  return(pretreated_data)
+  return("")
 }
 
 # Run the full pipeline.
